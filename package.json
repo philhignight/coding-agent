@@ -1,0 +1,35 @@
+{
+  "name": "ccc-claude-code-clone",
+  "version": "1.0.0",
+  "description": "Claude Code Clone - Clipboard-based bridge for internal Claude UI",
+  "main": "src/node-server/coordinator.js",
+  "scripts": {
+    "compile": "./compile.sh",
+    "start": "node src/node-server/coordinator.js",
+    "mock": "node mock-env/server.js",
+    "test": "./test.sh",
+    "java:compile": "cd src/java-agent && ./compile.sh",
+    "dev": "npm run compile && npm run test"
+  },
+  "keywords": [
+    "claude",
+    "clipboard",
+    "automation",
+    "bridge"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/ccc-project.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/ccc-project/issues"
+  },
+  "homepage": "https://github.com/yourusername/ccc-project#readme"
+}

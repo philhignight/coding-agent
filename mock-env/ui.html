@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CCC Mock Internal UI</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: monospace;
+      background: #1a1a1a;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    #status-bar {
+      padding: 10px;
+      background: #2a2a2a;
+      border-bottom: 2px solid #444;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    #click-target {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      position: relative;
+    }
+    
+    #click-target.ready {
+      background: #003300;
+    }
+    
+    #click-target.processing {
+      background: #333300;
+    }
+    
+    #click-target.error {
+      background: #330000;
+    }
+    
+    #click-target.success {
+      background: #003333;
+    }
+    
+    .status-text {
+      font-size: 24px;
+      font-weight: bold;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    
+    #console {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 200px;
+      background: rgba(0,0,0,0.9);
+      border-top: 1px solid #444;
+      padding: 10px;
+      overflow-y: auto;
+      font-size: 12px;
+      display: none;
+    }
+    
+    #console.visible {
+      display: block;
+    }
+    
+    .log-entry {
+      margin: 2px 0;
+      padding: 2px;
+    }
+    
+    .log-entry.info { color: #88ff88; }
+    .log-entry.error { color: #ff8888; }
+    .log-entry.debug { color: #8888ff; }
+    
+    #controls {
+      position: absolute;
+      top: 60px;
+      right: 10px;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+    }
+    
+    button {
+      display: block;
+      margin: 5px 0;
+      padding: 5px 10px;
+      background: #444;
+      color: #fff;
+      border: 1px solid #666;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    
+    button:hover {
+      background: #555;
+    }
+    
+    #clipboard-content {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      max-width: 400px;
+      max-height: 300px;
+      overflow: auto;
+      display: none;
+    }
+    
+    #clipboard-content.visible {
+      display: block;
+    }
+    
+    pre {
+      margin: 0;
+      font-size: 10px;
+      color: #88ff88;
+    }
+  </style>
+</head>
+<body>
+  <div id="status-bar">
+    <div>CCC Mock UI - <span id="connection-status">Disconnected</span></div>
+    <div>Token: <span id="token-status">Not Set</span></div>
+  </div>
+  
+  <div id="click-target" class="ready">
+    <div class="status-text">CLICK HERE TO POLL</div>
+  </div>
+  
+  <div id="controls">
+    <button onclick="toggleConsole()">Toggle Console</button>
+    <button onclick="injectBridge()">Inject Bridge</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+    <button onclick="toggleClipboard()">Show Clipboard</button>
+  </div>
+  
+  <div id="clipboard-content">
+    <h4>Last Clipboard Content:</h4>
+    <pre id="clipboard-text">Empty</pre>
+  </div>
+  
+  <div id="console">
+    <div id="log-container"></div>
+  </div>
+  
+  <script>
+    // Set mock token in localStorage
+    localStorage.setItem('token', 'mock-token-12345');
+    document.getElementById('token-status').textContent = 'mock-token-12345';
+    
+    // Logging functions
+    function log(message, type = 'info') {
+      const container = document.getElementById('log-container');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      container.appendChild(entry);
+      container.scrollTop = container.scrollHeight;
+    }
+    
+    function toggleConsole() {
+      document.getElementById('console').classList.toggle('visible');
+    }
+    
+    function clearLogs() {
+      document.getElementById('log-container').innerHTML = '';
+    }
+    
+    function toggleClipboard() {
+      document.getElementById('clipboard-content').classList.toggle('visible');
+    }
+    
+    // Mock API base URL
+    const API_BASE = window.location.origin;
+    
+    // Bridge state
+    let bridgeActive = false;
+    let lastClipboard = '';
+    let processingRequest = false;
+    
+    // Click handler
+    document.getElementById('click-target').addEventListener('click', async () => {
+      if (!bridgeActive) {
+        log('Bridge not active. Click "Inject Bridge" first.', 'error');
+        return;
+      }
+      
+      if (processingRequest) {
+        log('Already processing a request', 'debug');
+        return;
+      }
+      
+      try {
+        // Read clipboard
+        const clipboardText = await navigator.clipboard.readText();
+        
+        if (clipboardText === lastClipboard || !clipboardText) {
+          log('No new clipboard content', 'debug');
+          return;
+        }
+        
+        lastClipboard = clipboardText;
+        document.getElementById('clipboard-text').textContent = clipboardText.substring(0, 500);
+        
+        // Check if it's a CCC request
+        if (!clipboardText.includes('CCC_REQUEST')) {
+          log('Not a CCC request', 'debug');
+          return;
+        }
+        
+        log('Processing CCC request', 'info');
+        setStatus('processing');
+        processingRequest = true;
+        
+        // Parse request
+        const requestText = clipboardText.split('|||CCC_END|||')[0];
+        const request = JSON.parse(requestText);
+        
+        log(`Request action: ${request.action}`, 'info');
+        
+        // Send acknowledgment
+        await navigator.clipboard.writeText(`|||CCC_ACK:${request.id}|||`);
+        
+        // Process based on action
+        let response;
+        
+        switch (request.action) {
+          case 'chat':
+            response = await handleChatRequest(request.payload);
+            break;
+          case 'continue':
+            response = await handleContinueRequest(request.payload);
+            break;
+          case 'cancel':
+            response = { status: 'cancelled' };
+            break;
+          default:
+            throw new Error(`Unknown action: ${request.action}`);
+        }
+        
+        // Create response message
+        const responseMessage = {
+          type: 'BROWSER_RESPONSE',
+          id: request.id,
+          timestamp: Date.now(),
+          status: 'success',
+          payload: response,
+          checksum: 'mock-checksum'
+        };
+        
+        // Write response to clipboard
+        const responseText = JSON.stringify(responseMessage) + '|||BROWSER_END|||';
+        await navigator.clipboard.writeText(responseText);
+        
+        log('Response written to clipboard', 'info');
+        setStatus('success');
+        
+      } catch (error) {
+        log(`Error: ${error.message}`, 'error');
+        setStatus('error');
+        
+        // Write error response
+        const errorResponse = {
+          type: 'BROWSER_RESPONSE',
+          id: 'error',
+          timestamp: Date.now(),
+          status: 'error',
+          payload: { error: error.message },
+          checksum: 'mock-checksum'
+        };
+        
+        await navigator.clipboard.writeText(JSON.stringify(errorResponse) + '|||BROWSER_END|||');
+      } finally {
+        processingRequest = false;
+        setTimeout(() => setStatus('ready'), 2000);
+      }
+    });
+    
+    // Set visual status
+    function setStatus(status) {
+      const target = document.getElementById('click-target');
+      target.className = status;
+      
+      const statusText = {
+        ready: 'CLICK HERE TO POLL',
+        processing: 'PROCESSING...',
+        error: 'ERROR OCCURRED',
+        success: 'SUCCESS!'
+      };
+      
+      target.querySelector('.status-text').textContent = statusText[status] || 'UNKNOWN';
+    }
+    
+    // Handle chat request
+    async function handleChatRequest(payload) {
+      const token = localStorage.getItem('token');
+      
+      // Step 1: Create new chat
+      const createResponse = await fetch(`${API_BASE}/api/v1/chats/new`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ message: payload.message })
+      });
+      
+      const chat = await createResponse.json();
+      log(`Created chat: ${chat.id}`, 'info');
+      
+      // Step 2: Get conversation state
+      const stateResponse = await fetch(`${API_BASE}/api/v1/chats/${chat.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const state = await stateResponse.json();
+      
+      // Step 3: Stream completion
+      const streamResponse = await fetch(`${API_BASE}/api/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          chat_id: chat.id,
+          stream: true,
+          session_id: '11111111111111111111'
+        })
+      });
+      
+      // Read stream
+      const reader = streamResponse.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.substring(6));
+            if (data.choices?.[0]?.delta?.content) {
+              accumulated += data.choices[0].delta.content;
+              log(`Streaming: ${accumulated.length} chars`, 'debug');
+            }
+            if (data.choices?.[0]?.finish_reason === 'stop') {
+              log('Stream complete', 'info');
+            }
+          }
+        }
+      }
+      
+      return {
+        chat_id: chat.id,
+        content: accumulated
+      };
+    }
+    
+    // Handle continue request
+    async function handleContinueRequest(payload) {
+      // Simplified for mock
+      return {
+        content: 'Continued response from mock server'
+      };
+    }
+    
+    // Inject bridge script
+    function injectBridge() {
+      bridgeActive = true;
+      document.getElementById('connection-status').textContent = 'Bridge Active';
+      log('Bridge injected and active', 'info');
+      setStatus('ready');
+    }
+    
+    // Auto-inject on load
+    window.addEventListener('load', () => {
+      log('Mock UI loaded', 'info');
+      setTimeout(injectBridge, 1000);
+    });
+  </script>
+</body>
+</html>

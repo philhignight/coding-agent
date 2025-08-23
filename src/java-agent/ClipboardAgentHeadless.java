@@ -197,10 +197,15 @@ public class ClipboardAgentHeadless {
                     if (clickCount % 5 == 0 && headlessMode) {
                         // Simulate finding a response after some clicks
                         if (clickCount == 15 && simulatedClipboard.contains("CCC_REQUEST")) {
-                            // Simulate browser response
-                            String mockResponse = "{\"type\":\"BROWSER_RESPONSE\",\"id\":\"mock-id\",\"status\":\"success\",\"payload\":{\"content\":\"Mock response from simulated browser\"}}|||BROWSER_END|||";
+                            // Extract request ID from the request
+                            String requestId = extractRequestId(simulatedClipboard);
+                            // Simulate browser response with matching ID
+                            String mockResponse = String.format(
+                                "{\"type\":\"BROWSER_RESPONSE\",\"id\":\"%s\",\"status\":\"success\",\"payload\":{\"content\":\"Mock response from simulated browser\"}}|||BROWSER_END|||",
+                                requestId
+                            );
                             simulatedClipboard = mockResponse;
-                            log("Simulated browser response written to clipboard");
+                            log("Simulated browser response written to clipboard with ID: " + requestId);
                         }
                     }
                     
@@ -228,6 +233,29 @@ public class ClipboardAgentHeadless {
     }
     
     // Helper methods
+    private static String extractRequestId(String clipboardContent) {
+        try {
+            // Extract the JSON part before |||CCC_END|||
+            int endIndex = clipboardContent.indexOf("|||CCC_END|||");
+            if (endIndex > 0) {
+                clipboardContent = clipboardContent.substring(0, endIndex);
+            }
+            
+            // Simple extraction of id field from JSON
+            int idIndex = clipboardContent.indexOf("\"id\":");
+            if (idIndex > 0) {
+                int startQuote = clipboardContent.indexOf("\"", idIndex + 5);
+                int endQuote = clipboardContent.indexOf("\"", startQuote + 1);
+                if (startQuote > 0 && endQuote > startQuote) {
+                    return clipboardContent.substring(startQuote + 1, endQuote);
+                }
+            }
+        } catch (Exception e) {
+            log("Failed to extract request ID: " + e.getMessage());
+        }
+        return "unknown-id";
+    }
+    
     private static Map<String, Object> parseSimpleJson(String json) {
         Map<String, Object> result = new HashMap<>();
         

@@ -1,0 +1,12 @@
+{
+  "coordinatorPort": 5555,
+  "mockServerPort": 5556,
+  "production": {
+    "coordinatorPort": 5555,
+    "mockServerPort": 5556
+  },
+  "development": {
+    "coordinatorPort": 3000,
+    "mockServerPort": 3001
+  }
+}

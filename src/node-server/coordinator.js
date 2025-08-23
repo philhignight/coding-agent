@@ -9,7 +9,7 @@ const readline = require('readline');
 // Configuration
 const CONFIG = {
   javaAgentPath: path.join(__dirname, '..', 'java-agent', 'agent.jar'),
-  serverPort: 3000,
+  serverPort: process.env.COORDINATOR_PORT || 5555,
   clickInterval: 100,
   maxClickDuration: 30000,
   clickPosition: { x: 500, y: 500 }, // Default, should be calibrated
@@ -456,7 +456,7 @@ async function initialize() {
     sendJavaCommand({ cmd: 'SET_STATUS', message: 'CCC Ready' });
     
     console.log('[Coordinator] Initialization complete');
-    console.log('[Coordinator] Please calibrate browser position at http://localhost:3000/api/calibrate?x=X&y=Y');
+    console.log(`[Coordinator] Please calibrate browser position at http://localhost:${CONFIG.serverPort}/api/calibrate?x=X&y=Y`);
     
   } catch (error) {
     console.error('[Coordinator] Initialization failed:', error);

@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const PORT = 3001;
+const PORT = process.env.MOCK_PORT || 5556;
 
 // In-memory storage
 const conversations = new Map();

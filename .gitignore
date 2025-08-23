@@ -5,6 +5,7 @@ npm-debug.log*
 
 # Java
 *.class
+*.jar
 .settings/
 .project
 .classpath
@@ -25,3 +26,4 @@ Thumbs.db
 
 # Test output
 /tmp/
+/logs/

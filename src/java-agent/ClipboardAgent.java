@@ -208,14 +208,18 @@ public class ClipboardAgent {
                 int clickCount = 0;
                 
                 while (!stopClicking && (System.currentTimeMillis() - startTime) < maxDuration) {
-                    // Move to position and click
+                    // Move to position
                     robot.mouseMove(x, y);
+                    robot.delay(50);
+                    
+                    // Click with hold time (like the proven test)
                     robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+                    robot.delay(80); // Hold for 80ms like the test
                     robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
                     clickCount++;
                     
-                    // Wait for interval
-                    Thread.sleep(interval);
+                    // Wait for interval (use longer interval for more deliberate clicks)
+                    Thread.sleep(Math.max(interval, 500)); // At least 500ms between clicks
                 }
                 
                 sendResponse("click_loop_complete", clickCount + " clicks");

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CCC Mock Internal UI - Fixed</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: monospace;
+      background: #1a1a1a;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    #status-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 10px;
+      background: #2a2a2a;
+      border-bottom: 2px solid #444;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    #main-container {
+      text-align: center;
+      padding: 40px;
+      background: #2a2a2a;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      min-width: 500px;
+    }
+    
+    .click-button {
+      display: inline-block;
+      margin: 20px;
+      padding: 30px 50px;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      transition: all 0.3s;
+    }
+    
+    #clipboard-read-btn {
+      background: #28a745;
+      color: white;
+    }
+    
+    #clipboard-read-btn:hover {
+      background: #218838;
+    }
+    
+    #clipboard-write-btn {
+      background: #17a2b8;
+      color: white;
+    }
+    
+    #clipboard-write-btn:hover {
+      background: #138496;
+    }
+    
+    #status {
+      margin-top: 30px;
+      padding: 20px;
+      background: #1a1a1a;
+      border-radius: 5px;
+      min-height: 200px;
+      max-height: 400px;
+      overflow-y: auto;
+      text-align: left;
+      font-size: 12px;
+      white-space: pre-wrap;
+    }
+    
+    .log-entry {
+      margin: 2px 0;
+      padding: 2px;
+    }
+    
+    .log-entry.info { color: #88ff88; }
+    .log-entry.error { color: #ff8888; }
+    .log-entry.success { color: #00ff00; }
+    .log-entry.debug { color: #8888ff; }
+    
+    #instructions {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      padding: 15px;
+      background: rgba(0,0,0,0.8);
+      border-radius: 5px;
+      font-size: 14px;
+      color: #aaa;
+    }
+    
+    .stats {
+      position: absolute;
+      top: 60px;
+      right: 20px;
+      background: rgba(0,0,0,0.8);
+      padding: 15px;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    
+    .indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-left: 10px;
+    }
+    
+    .indicator.ready { background: #28a745; }
+    .indicator.processing { background: #ffc107; }
+    .indicator.error { background: #dc3545; }
+  </style>
+</head>
+<body>
+  <div id="status-bar">
+    <div>CCC Mock UI - Fixed Version <span id="bridge-status" class="indicator ready"></span></div>
+    <div>Token: <span id="token-status">mock-token-12345</span></div>
+  </div>
+  
+  <div id="main-container">
+    <h1>CCC Clipboard Bridge Test</h1>
+    
+    <div>
+      <button id="clipboard-read-btn" class="click-button">
+        READ CLIPBOARD
+      </button>
+      
+      <button id="clipboard-write-btn" class="click-button">
+        WRITE RESPONSE
+      </button>
+    </div>
+    
+    <div id="status"></div>
+  </div>
+  
+  <div class="stats">
+    <div>Click Count: <span id="click-count">0</span></div>
+    <div>Success Count: <span id="success-count">0</span></div>
+    <div>Fail Count: <span id="fail-count">0</span></div>
+    <div>Last Click: <span id="last-click">Never</span></div>
+    <div>isTrusted: <span id="trusted-status">N/A</span></div>
+  </div>
+  
+  <div id="instructions">
+    <strong>Instructions:</strong> The Java Robot will click these buttons automatically. 
+    Watch for clipboard read/write operations. The READ button checks for CCC_REQUEST messages,
+    and the WRITE button sends back responses.
+  </div>
+  
+  <script>
+    // Set mock token
+    localStorage.setItem('token', 'mock-token-12345');
+    
+    // State
+    let clickCount = 0;
+    let successCount = 0;
+    let failCount = 0;
+    let lastRequest = null;
+    let processingRequest = false;
+    
+    // Logging
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const statusDiv = document.getElementById('status');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${timestamp}] ${message}`;
+      statusDiv.appendChild(entry);
+      statusDiv.scrollTop = statusDiv.scrollHeight;
+      
+      // Keep only last 50 entries
+      while (statusDiv.children.length > 50) {
+        statusDiv.removeChild(statusDiv.firstChild);
+      }
+      
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+    
+    // Update stats
+    function updateStats(isTrusted = null) {
+      document.getElementById('click-count').textContent = clickCount;
+      document.getElementById('success-count').textContent = successCount;
+      document.getElementById('fail-count').textContent = failCount;
+      document.getElementById('last-click').textContent = new Date().toLocaleTimeString();
+      if (isTrusted !== null) {
+        document.getElementById('trusted-status').textContent = isTrusted ? 'YES' : 'NO';
+      }
+    }
+    
+    // Read button - Check clipboard for CCC_REQUEST
+    document.getElementById('clipboard-read-btn').addEventListener('click', async (e) => {
+      clickCount++;
+      updateStats(e.isTrusted);
+      
+      log(`Click #${clickCount} - READ button (isTrusted: ${e.isTrusted})`);
+      
+      // Check if this is a trusted event (real or Robot click)
+      if (!e.isTrusted) {
+        log('Warning: Click not trusted by browser', 'error');
+      }
+      
+      try {
+        // Try to read clipboard
+        const clipboardText = await navigator.clipboard.readText();
+        log(`Read ${clipboardText.length} chars from clipboard`, 'success');
+        
+        // Check if it's a CCC request
+        if (clipboardText.includes('CCC_REQUEST')) {
+          log('Found CCC_REQUEST!', 'success');
+          successCount++;
+          
+          // Parse the request
+          const requestEnd = clipboardText.indexOf('|||CCC_END|||');
+          if (requestEnd > 0) {
+            const requestJson = clipboardText.substring(0, requestEnd);
+            try {
+              lastRequest = JSON.parse(requestJson);
+              log(`Parsed request ID: ${lastRequest.id}`, 'success');
+              log(`Request action: ${lastRequest.action}`, 'info');
+              
+              // Set flag to write response on next write button click
+              processingRequest = true;
+              document.getElementById('clipboard-write-btn').style.background = '#ffc107';
+              
+            } catch (parseErr) {
+              log(`Failed to parse request: ${parseErr.message}`, 'error');
+              failCount++;
+            }
+          }
+        } else {
+          log('No CCC_REQUEST in clipboard', 'debug');
+        }
+        
+      } catch (error) {
+        failCount++;
+        log(`Failed to read clipboard: ${error.message}`, 'error');
+        
+        // Try fallback method
+        try {
+          // For reading, there's no good fallback in modern browsers
+          log('Note: No fallback for clipboard read in modern browsers', 'info');
+        } catch (fallbackErr) {
+          log(`Fallback also failed: ${fallbackErr.message}`, 'error');
+        }
+      }
+      
+      updateStats(e.isTrusted);
+    });
+    
+    // Write button - Send response back
+    document.getElementById('clipboard-write-btn').addEventListener('click', async (e) => {
+      clickCount++;
+      updateStats(e.isTrusted);
+      
+      log(`Click #${clickCount} - WRITE button (isTrusted: ${e.isTrusted})`);
+      
+      if (!processingRequest || !lastRequest) {
+        log('No request to respond to', 'debug');
+        return;
+      }
+      
+      try {
+        // Create response
+        const response = {
+          type: 'BROWSER_RESPONSE',
+          id: lastRequest.id,
+          timestamp: Date.now(),
+          status: 'success',
+          payload: {
+            content: 'Mock response from fixed UI - clipboard access successful!',
+            chat_id: 'mock-chat-' + Date.now(),
+            trusted: e.isTrusted
+          }
+        };
+        
+        const responseText = JSON.stringify(response) + '|||BROWSER_END|||';
+        
+        // Try to write to clipboard
+        await navigator.clipboard.writeText(responseText);
+        successCount++;
+        log(`Wrote response for request ${lastRequest.id}`, 'success');
+        log(`Response length: ${responseText.length} chars`, 'info');
+        
+        // Reset state
+        processingRequest = false;
+        lastRequest = null;
+        document.getElementById('clipboard-write-btn').style.background = '#17a2b8';
+        
+      } catch (error) {
+        failCount++;
+        log(`Failed to write clipboard: ${error.message}`, 'error');
+        
+        // Try fallback method (execCommand)
+        try {
+          const textarea = document.createElement('textarea');
+          textarea.value = responseText;
+          textarea.style.position = 'fixed';
+          textarea.style.opacity = '0';
+          document.body.appendChild(textarea);
+          textarea.select();
+          const success = document.execCommand('copy');
+          document.body.removeChild(textarea);
+          
+          if (success) {
+            successCount++;
+            failCount--; // Correct the count
+            log('SUCCESS with fallback method (execCommand)!', 'success');
+            
+            // Reset state
+            processingRequest = false;
+            lastRequest = null;
+            document.getElementById('clipboard-write-btn').style.background = '#17a2b8';
+          } else {
+            log('Fallback method also failed', 'error');
+          }
+        } catch (fallbackErr) {
+          log(`Fallback error: ${fallbackErr.message}`, 'error');
+        }
+      }
+      
+      updateStats(e.isTrusted);
+    });
+    
+    // Monitor all clicks for debugging
+    document.addEventListener('click', (e) => {
+      console.log(`%cClick detected on ${e.target.tagName}#${e.target.id || '(no-id)'}`, 
+                  'background: yellow; color: black');
+      console.log(`  isTrusted: ${e.isTrusted}`);
+      console.log(`  Target: ${e.target.id}`);
+    }, true);
+    
+    // Initialize
+    log('Fixed UI ready. Waiting for Java Robot clicks...', 'success');
+    log('The READ button will check for CCC_REQUEST messages', 'info');
+    log('The WRITE button will send BROWSER_RESPONSE messages', 'info');
+  </script>
+</body>
+</html>

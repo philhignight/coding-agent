@@ -36,21 +36,34 @@
       
       try {
         const clipboardText = await navigator.clipboard.readText();
+        console.log('[CCC Bridge Mock] Clipboard length:', clipboardText.length);
         
         if (clipboardText.includes('CCC_REQUEST')) {
           console.log('[CCC Bridge Mock] Found CCC_REQUEST!');
           const requestEnd = clipboardText.indexOf('|||CCC_END|||');
           if (requestEnd > 0) {
             const requestJson = clipboardText.substring(0, requestEnd);
-            lastRequest = JSON.parse(requestJson);
-            console.log('[CCC Bridge Mock] Parsed request:', lastRequest.id, lastRequest.action);
+            console.log('[CCC Bridge Mock] Raw request JSON:', requestJson);
+            console.log('[CCC Bridge Mock] First 50 chars:', requestJson.substring(0, 50));
             
-            // Visual feedback
-            readBtn.style.background = '#ffc107';
-            setTimeout(() => {
-              readBtn.style.background = '#28a745';
-            }, 500);
+            try {
+              lastRequest = JSON.parse(requestJson);
+              console.log('[CCC Bridge Mock] Parsed request:', lastRequest.id, lastRequest.action);
+              
+              // Visual feedback
+              readBtn.style.background = '#ffc107';
+              setTimeout(() => {
+                readBtn.style.background = '#28a745';
+              }, 500);
+            } catch (parseErr) {
+              console.error('[CCC Bridge Mock] JSON parse error:', parseErr.message);
+              console.error('[CCC Bridge Mock] Invalid JSON:', requestJson);
+            }
+          } else {
+            console.warn('[CCC Bridge Mock] Found CCC_REQUEST but no |||CCC_END||| marker');
           }
+        } else {
+          console.log('[CCC Bridge Mock] No CCC_REQUEST in clipboard');
         }
       } catch (err) {
         console.error('[CCC Bridge Mock] Error reading clipboard:', err);

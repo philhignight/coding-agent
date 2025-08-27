@@ -42,12 +42,15 @@
           console.log('[CCC Bridge Mock] Found CCC_REQUEST!');
           const requestEnd = clipboardText.indexOf('|||CCC_END|||');
           if (requestEnd > 0) {
-            const requestJson = clipboardText.substring(0, requestEnd);
+            const requestJson = clipboardText.substring(0, requestEnd).trim();
             console.log('[CCC Bridge Mock] Raw request JSON:', requestJson);
             console.log('[CCC Bridge Mock] First 50 chars:', requestJson.substring(0, 50));
+            console.log('[CCC Bridge Mock] First char code:', requestJson.charCodeAt(0));
             
             try {
-              lastRequest = JSON.parse(requestJson);
+              // Remove any BOM or zero-width characters
+              const cleanJson = requestJson.replace(/^\uFEFF/, '').replace(/^[\u200B-\u200D\uFEFF]/, '');
+              lastRequest = JSON.parse(cleanJson);
               console.log('[CCC Bridge Mock] Parsed request:', lastRequest.id, lastRequest.action);
               
               // Visual feedback
@@ -58,6 +61,9 @@
             } catch (parseErr) {
               console.error('[CCC Bridge Mock] JSON parse error:', parseErr.message);
               console.error('[CCC Bridge Mock] Invalid JSON:', requestJson);
+              // Log char codes for debugging
+              console.error('[CCC Bridge Mock] First 10 char codes:', 
+                [...requestJson.substring(0, 10)].map(c => c.charCodeAt(0)).join(', '));
             }
           } else {
             console.warn('[CCC Bridge Mock] Found CCC_REQUEST but no |||CCC_END||| marker');

@@ -14,9 +14,15 @@
       height: 100vh;
       display: flex;
       flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
     
     #status-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
       padding: 10px;
       background: #2a2a2a;
       border-bottom: 2px solid #444;
@@ -25,54 +31,56 @@
       align-items: center;
     }
     
-    #click-target {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: background-color 0.3s;
-      position: relative;
+    #main-container {
+      text-align: center;
+      padding: 40px;
+      background: #2a2a2a;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      min-width: 500px;
     }
     
-    #click-target.ready {
-      background: #003300;
-    }
-    
-    #click-target.processing {
-      background: #333300;
-    }
-    
-    #click-target.error {
-      background: #330000;
-    }
-    
-    #click-target.success {
-      background: #003333;
-    }
-    
-    .status-text {
-      font-size: 24px;
+    .click-button {
+      display: inline-block;
+      margin: 20px;
+      padding: 30px 50px;
+      font-size: 20px;
       font-weight: bold;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      transition: all 0.3s;
     }
     
-    #console {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 200px;
-      background: rgba(0,0,0,0.9);
-      border-top: 1px solid #444;
-      padding: 10px;
+    #clipboard-read-btn {
+      background: #28a745;
+      color: white;
+    }
+    
+    #clipboard-read-btn:hover {
+      background: #218838;
+    }
+    
+    #clipboard-write-btn {
+      background: #17a2b8;
+      color: white;
+    }
+    
+    #clipboard-write-btn:hover {
+      background: #138496;
+    }
+    
+    #status {
+      margin-top: 30px;
+      padding: 20px;
+      background: #1a1a1a;
+      border-radius: 5px;
+      min-height: 200px;
+      max-height: 400px;
       overflow-y: auto;
+      text-align: left;
       font-size: 12px;
-      display: none;
-    }
-    
-    #console.visible {
-      display: block;
+      white-space: pre-wrap;
     }
     
     .log-entry {
@@ -82,323 +90,266 @@
     
     .log-entry.info { color: #88ff88; }
     .log-entry.error { color: #ff8888; }
+    .log-entry.success { color: #00ff00; }
     .log-entry.debug { color: #8888ff; }
     
-    #controls {
+    #instructions {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      padding: 15px;
+      background: rgba(0,0,0,0.8);
+      border-radius: 5px;
+      font-size: 14px;
+      color: #aaa;
+    }
+    
+    .stats {
       position: absolute;
       top: 60px;
-      right: 10px;
+      right: 20px;
       background: rgba(0,0,0,0.8);
-      padding: 10px;
+      padding: 15px;
       border-radius: 5px;
+      font-size: 14px;
     }
     
-    button {
-      display: block;
-      margin: 5px 0;
-      padding: 5px 10px;
-      background: #444;
-      color: #fff;
-      border: 1px solid #666;
-      cursor: pointer;
-      border-radius: 3px;
+    .indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-left: 10px;
     }
     
-    button:hover {
-      background: #555;
-    }
-    
-    #clipboard-content {
-      position: absolute;
-      top: 60px;
-      left: 10px;
-      background: rgba(0,0,0,0.8);
-      padding: 10px;
-      border-radius: 5px;
-      max-width: 400px;
-      max-height: 300px;
-      overflow: auto;
-      display: none;
-    }
-    
-    #clipboard-content.visible {
-      display: block;
-    }
-    
-    pre {
-      margin: 0;
-      font-size: 10px;
-      color: #88ff88;
-    }
+    .indicator.ready { background: #28a745; }
+    .indicator.processing { background: #ffc107; }
+    .indicator.error { background: #dc3545; }
   </style>
 </head>
 <body>
   <div id="status-bar">
-    <div>CCC Mock UI - <span id="connection-status">Disconnected</span></div>
-    <div>Token: <span id="token-status">Not Set</span></div>
+    <div>CCC Mock UI <span id="bridge-status" class="indicator ready"></span></div>
+    <div>Token: <span id="token-status">mock-token-12345</span></div>
   </div>
   
-  <div id="click-target" class="ready">
-    <div class="status-text">CLICK HERE TO POLL</div>
+  <div id="main-container">
+    <h1>CCC Clipboard Bridge Test</h1>
+    
+    <div>
+      <button id="clipboard-read-btn" class="click-button">
+        READ CLIPBOARD
+      </button>
+      
+      <button id="clipboard-write-btn" class="click-button">
+        WRITE RESPONSE
+      </button>
+    </div>
+    
+    <div id="status"></div>
   </div>
   
-  <div id="controls">
-    <button onclick="toggleConsole()">Toggle Console</button>
-    <button onclick="injectBridge()">Inject Bridge</button>
-    <button onclick="clearLogs()">Clear Logs</button>
-    <button onclick="toggleClipboard()">Show Clipboard</button>
+  <div class="stats">
+    <div>Click Count: <span id="click-count">0</span></div>
+    <div>Success Count: <span id="success-count">0</span></div>
+    <div>Fail Count: <span id="fail-count">0</span></div>
+    <div>Last Click: <span id="last-click">Never</span></div>
+    <div>isTrusted: <span id="trusted-status">N/A</span></div>
   </div>
   
-  <div id="clipboard-content">
-    <h4>Last Clipboard Content:</h4>
-    <pre id="clipboard-text">Empty</pre>
-  </div>
-  
-  <div id="console">
-    <div id="log-container"></div>
+  <div id="instructions">
+    <strong>Instructions:</strong> The Java Robot will click these buttons automatically. 
+    Watch for clipboard read/write operations. The READ button checks for CCC_REQUEST messages,
+    and the WRITE button sends back responses.
   </div>
   
   <script>
-    // Set mock token in localStorage
+    // Set mock token
     localStorage.setItem('token', 'mock-token-12345');
-    document.getElementById('token-status').textContent = 'mock-token-12345';
     
-    // Logging functions
-    function log(message, type = 'info') {
-      const container = document.getElementById('log-container');
-      const entry = document.createElement('div');
-      entry.className = `log-entry ${type}`;
-      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-      container.appendChild(entry);
-      container.scrollTop = container.scrollHeight;
-    }
-    
-    function toggleConsole() {
-      document.getElementById('console').classList.toggle('visible');
-    }
-    
-    function clearLogs() {
-      document.getElementById('log-container').innerHTML = '';
-    }
-    
-    function toggleClipboard() {
-      document.getElementById('clipboard-content').classList.toggle('visible');
-    }
-    
-    // Mock API base URL
-    const API_BASE = window.location.origin;
-    
-    // Bridge state
-    let bridgeActive = false;
-    let lastClipboard = '';
+    // State
+    let clickCount = 0;
+    let successCount = 0;
+    let failCount = 0;
+    let lastRequest = null;
     let processingRequest = false;
     
-    // Click handler
-    document.getElementById('click-target').addEventListener('click', async () => {
-      if (!bridgeActive) {
-        log('Bridge not active. Click "Inject Bridge" first.', 'error');
-        return;
+    // Logging
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const statusDiv = document.getElementById('status');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${timestamp}] ${message}`;
+      statusDiv.appendChild(entry);
+      statusDiv.scrollTop = statusDiv.scrollHeight;
+      
+      // Keep only last 50 entries
+      while (statusDiv.children.length > 50) {
+        statusDiv.removeChild(statusDiv.firstChild);
       }
       
-      if (processingRequest) {
-        log('Already processing a request', 'debug');
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+    
+    // Update stats
+    function updateStats(isTrusted = null) {
+      document.getElementById('click-count').textContent = clickCount;
+      document.getElementById('success-count').textContent = successCount;
+      document.getElementById('fail-count').textContent = failCount;
+      document.getElementById('last-click').textContent = new Date().toLocaleTimeString();
+      if (isTrusted !== null) {
+        document.getElementById('trusted-status').textContent = isTrusted ? 'YES' : 'NO';
+      }
+    }
+    
+    // Read button - Check clipboard for CCC_REQUEST
+    document.getElementById('clipboard-read-btn').addEventListener('click', async (e) => {
+      clickCount++;
+      updateStats(e.isTrusted);
+      
+      log(`Click #${clickCount} - READ button (isTrusted: ${e.isTrusted})`);
+      
+      // Check if this is a trusted event (real or Robot click)
+      if (!e.isTrusted) {
+        log('Warning: Click not trusted by browser', 'error');
+      }
+      
+      try {
+        // Try to read clipboard
+        const clipboardText = await navigator.clipboard.readText();
+        log(`Read ${clipboardText.length} chars from clipboard`, 'success');
+        
+        // Check if it's a CCC request
+        if (clipboardText.includes('CCC_REQUEST')) {
+          log('Found CCC_REQUEST!', 'success');
+          successCount++;
+          
+          // Parse the request
+          const requestEnd = clipboardText.indexOf('|||CCC_END|||');
+          if (requestEnd > 0) {
+            const requestJson = clipboardText.substring(0, requestEnd);
+            try {
+              lastRequest = JSON.parse(requestJson);
+              log(`Parsed request ID: ${lastRequest.id}`, 'success');
+              log(`Request action: ${lastRequest.action}`, 'info');
+              
+              // Set flag to write response on next write button click
+              processingRequest = true;
+              document.getElementById('clipboard-write-btn').style.background = '#ffc107';
+              
+            } catch (parseErr) {
+              log(`Failed to parse request: ${parseErr.message}`, 'error');
+              failCount++;
+            }
+          }
+        } else {
+          log('No CCC_REQUEST in clipboard', 'debug');
+        }
+        
+      } catch (error) {
+        failCount++;
+        log(`Failed to read clipboard: ${error.message}`, 'error');
+        
+        // Try fallback method
+        try {
+          // For reading, there's no good fallback in modern browsers
+          log('Note: No fallback for clipboard read in modern browsers', 'info');
+        } catch (fallbackErr) {
+          log(`Fallback also failed: ${fallbackErr.message}`, 'error');
+        }
+      }
+      
+      updateStats(e.isTrusted);
+    });
+    
+    // Write button - Send response back
+    document.getElementById('clipboard-write-btn').addEventListener('click', async (e) => {
+      clickCount++;
+      updateStats(e.isTrusted);
+      
+      log(`Click #${clickCount} - WRITE button (isTrusted: ${e.isTrusted})`);
+      
+      if (!processingRequest || !lastRequest) {
+        log('No request to respond to', 'debug');
         return;
       }
       
       try {
-        // Read clipboard
-        const clipboardText = await navigator.clipboard.readText();
-        
-        if (clipboardText === lastClipboard || !clipboardText) {
-          log('No new clipboard content', 'debug');
-          return;
-        }
-        
-        lastClipboard = clipboardText;
-        document.getElementById('clipboard-text').textContent = clipboardText.substring(0, 500);
-        
-        // Check if it's a CCC request
-        if (!clipboardText.includes('CCC_REQUEST')) {
-          log('Not a CCC request', 'debug');
-          return;
-        }
-        
-        log('Processing CCC request', 'info');
-        setStatus('processing');
-        processingRequest = true;
-        
-        // Parse request
-        const requestText = clipboardText.split('|||CCC_END|||')[0];
-        const request = JSON.parse(requestText);
-        
-        log(`Request action: ${request.action}`, 'info');
-        
-        // Send acknowledgment
-        await navigator.clipboard.writeText(`|||CCC_ACK:${request.id}|||`);
-        
-        // Process based on action
-        let response;
-        
-        switch (request.action) {
-          case 'chat':
-            response = await handleChatRequest(request.payload);
-            break;
-          case 'continue':
-            response = await handleContinueRequest(request.payload);
-            break;
-          case 'cancel':
-            response = { status: 'cancelled' };
-            break;
-          default:
-            throw new Error(`Unknown action: ${request.action}`);
-        }
-        
-        // Create response message
-        const responseMessage = {
+        // Create response
+        const response = {
           type: 'BROWSER_RESPONSE',
-          id: request.id,
+          id: lastRequest.id,
           timestamp: Date.now(),
           status: 'success',
-          payload: response,
-          checksum: 'mock-checksum'
+          payload: {
+            content: 'Mock response from fixed UI - clipboard access successful!',
+            chat_id: 'mock-chat-' + Date.now(),
+            trusted: e.isTrusted
+          }
         };
         
-        // Write response to clipboard
-        const responseText = JSON.stringify(responseMessage) + '|||BROWSER_END|||';
-        await navigator.clipboard.writeText(responseText);
+        const responseText = JSON.stringify(response) + '|||BROWSER_END|||';
         
-        log('Response written to clipboard', 'info');
-        setStatus('success');
+        // Try to write to clipboard
+        await navigator.clipboard.writeText(responseText);
+        successCount++;
+        log(`Wrote response for request ${lastRequest.id}`, 'success');
+        log(`Response length: ${responseText.length} chars`, 'info');
+        
+        // Reset state
+        processingRequest = false;
+        lastRequest = null;
+        document.getElementById('clipboard-write-btn').style.background = '#17a2b8';
         
       } catch (error) {
-        log(`Error: ${error.message}`, 'error');
-        setStatus('error');
+        failCount++;
+        log(`Failed to write clipboard: ${error.message}`, 'error');
         
-        // Write error response
-        const errorResponse = {
-          type: 'BROWSER_RESPONSE',
-          id: 'error',
-          timestamp: Date.now(),
-          status: 'error',
-          payload: { error: error.message },
-          checksum: 'mock-checksum'
-        };
-        
-        await navigator.clipboard.writeText(JSON.stringify(errorResponse) + '|||BROWSER_END|||');
-      } finally {
-        processingRequest = false;
-        setTimeout(() => setStatus('ready'), 2000);
-      }
-    });
-    
-    // Set visual status
-    function setStatus(status) {
-      const target = document.getElementById('click-target');
-      target.className = status;
-      
-      const statusText = {
-        ready: 'CLICK HERE TO POLL',
-        processing: 'PROCESSING...',
-        error: 'ERROR OCCURRED',
-        success: 'SUCCESS!'
-      };
-      
-      target.querySelector('.status-text').textContent = statusText[status] || 'UNKNOWN';
-    }
-    
-    // Handle chat request
-    async function handleChatRequest(payload) {
-      const token = localStorage.getItem('token');
-      
-      // Step 1: Create new chat
-      const createResponse = await fetch(`${API_BASE}/api/v1/chats/new`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ message: payload.message })
-      });
-      
-      const chat = await createResponse.json();
-      log(`Created chat: ${chat.id}`, 'info');
-      
-      // Step 2: Get conversation state
-      const stateResponse = await fetch(`${API_BASE}/api/v1/chats/${chat.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      const state = await stateResponse.json();
-      
-      // Step 3: Stream completion
-      const streamResponse = await fetch(`${API_BASE}/api/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          chat_id: chat.id,
-          stream: true,
-          session_id: '11111111111111111111'
-        })
-      });
-      
-      // Read stream
-      const reader = streamResponse.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulated = '';
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = JSON.parse(line.substring(6));
-            if (data.choices?.[0]?.delta?.content) {
-              accumulated += data.choices[0].delta.content;
-              log(`Streaming: ${accumulated.length} chars`, 'debug');
-            }
-            if (data.choices?.[0]?.finish_reason === 'stop') {
-              log('Stream complete', 'info');
-            }
+        // Try fallback method (execCommand)
+        try {
+          const textarea = document.createElement('textarea');
+          textarea.value = responseText;
+          textarea.style.position = 'fixed';
+          textarea.style.opacity = '0';
+          document.body.appendChild(textarea);
+          textarea.select();
+          const success = document.execCommand('copy');
+          document.body.removeChild(textarea);
+          
+          if (success) {
+            successCount++;
+            failCount--; // Correct the count
+            log('SUCCESS with fallback method (execCommand)!', 'success');
+            
+            // Reset state
+            processingRequest = false;
+            lastRequest = null;
+            document.getElementById('clipboard-write-btn').style.background = '#17a2b8';
+          } else {
+            log('Fallback method also failed', 'error');
           }
+        } catch (fallbackErr) {
+          log(`Fallback error: ${fallbackErr.message}`, 'error');
         }
       }
       
-      return {
-        chat_id: chat.id,
-        content: accumulated
-      };
-    }
-    
-    // Handle continue request
-    async function handleContinueRequest(payload) {
-      // Simplified for mock
-      return {
-        content: 'Continued response from mock server'
-      };
-    }
-    
-    // Inject bridge script
-    function injectBridge() {
-      bridgeActive = true;
-      document.getElementById('connection-status').textContent = 'Bridge Active';
-      log('Bridge injected and active', 'info');
-      setStatus('ready');
-    }
-    
-    // Auto-inject on load
-    window.addEventListener('load', () => {
-      log('Mock UI loaded', 'info');
-      setTimeout(injectBridge, 1000);
+      updateStats(e.isTrusted);
     });
+    
+    // Monitor all clicks for debugging
+    document.addEventListener('click', (e) => {
+      console.log(`%cClick detected on ${e.target.tagName}#${e.target.id || '(no-id)'}`, 
+                  'background: yellow; color: black');
+      console.log(`  isTrusted: ${e.isTrusted}`);
+      console.log(`  Target: ${e.target.id}`);
+    }, true);
+    
+    // Initialize
+    log('Fixed UI ready. Waiting for Java Robot clicks...', 'success');
+    log('The READ button will check for CCC_REQUEST messages', 'info');
+    log('The WRITE button will send BROWSER_RESPONSE messages', 'info');
   </script>
 </body>
 </html>

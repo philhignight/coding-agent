@@ -10,9 +10,11 @@ const readline = require('readline');
 const CONFIG = {
   javaAgentPath: path.join(__dirname, '..', 'java-agent', 'agent.jar'),
   serverPort: process.env.COORDINATOR_PORT || 5555,
-  clickInterval: 100,
+  clickInterval: 500, // Slower, more deliberate clicks
   maxClickDuration: 30000,
-  clickPosition: { x: 500, y: 500 }, // Default, should be calibrated
+  // Two button positions for the UI
+  readButtonPosition: { x: 500, y: 400 }, // Position of READ button
+  writeButtonPosition: { x: 700, y: 400 }, // Position of WRITE button
   requestTimeout: 30000
 };
 
@@ -23,7 +25,10 @@ class CoordinatorState {
     this.pendingRequests = new Map();
     this.isProcessing = false;
     this.calibrated = false;
-    this.browserPosition = CONFIG.clickPosition;
+    this.buttonPositions = {
+      read: CONFIG.readButtonPosition,
+      write: CONFIG.writeButtonPosition
+    };
     this.stats = {
       requestsSent: 0,
       responsesReceived: 0,
@@ -40,7 +45,6 @@ function startJavaAgent() {
   return new Promise((resolve, reject) => {
     console.log('[Coordinator] Starting Java agent...');
     
-    // Check if agent.jar exists
     const jarPath = CONFIG.javaAgentPath;
     if (!fs.existsSync(jarPath)) {
       console.error('[Coordinator] agent.jar not found. Please compile the Java agent first.');
@@ -48,12 +52,10 @@ function startJavaAgent() {
       return;
     }
     
-    // Spawn Java process
     state.javaAgent = spawn('java', ['-jar', jarPath], {
       stdio: ['pipe', 'pipe', 'pipe']
     });
     
-    // Handle Java agent output
     const rl = readline.createInterface({
       input: state.javaAgent.stdout,
       crlfDelay: Infinity
@@ -68,24 +70,20 @@ function startJavaAgent() {
       }
     });
     
-    // Handle Java agent errors
     state.javaAgent.stderr.on('data', (data) => {
       console.error('[Java Agent Error]', data.toString());
     });
     
-    // Handle Java agent exit
     state.javaAgent.on('exit', (code) => {
       console.log(`[Coordinator] Java agent exited with code ${code}`);
       state.javaAgent = null;
       
-      // Auto-restart if unexpected exit
       if (code !== 0) {
         console.log('[Coordinator] Attempting to restart Java agent...');
         setTimeout(() => startJavaAgent(), 2000);
       }
     });
     
-    // Test connection
     setTimeout(() => {
       sendJavaCommand({ cmd: 'PING' });
       resolve();
@@ -110,7 +108,6 @@ function sendJavaCommand(command) {
 function handleJavaResponse(response) {
   console.log('[Coordinator] Java response:', response.type);
   
-  // Handle specific response types
   switch (response.type) {
     case 'pong':
       console.log('[Coordinator] Java agent is responsive');
@@ -122,10 +119,6 @@ function handleJavaResponse(response) {
       
     case 'click_loop_complete':
       handleClickLoopComplete(response.data);
-      break;
-      
-    default:
-      // Generic response handling
       break;
   }
 }
@@ -142,7 +135,7 @@ function calculateChecksum(data) {
   return 'sha256-' + hash.digest('hex');
 }
 
-// Send request through clipboard bridge
+// Send request through clipboard bridge with button approach
 async function sendClipboardRequest(action, payload) {
   return new Promise((resolve, reject) => {
     const requestId = generateUUID();
@@ -156,7 +149,6 @@ async function sendClipboardRequest(action, payload) {
     
     request.checksum = calculateChecksum(request);
     
-    // Store pending request
     state.pendingRequests.set(requestId, {
       request: request,
       resolve: resolve,
@@ -165,7 +157,6 @@ async function sendClipboardRequest(action, payload) {
       retries: 0
     });
     
-    // Set timeout
     setTimeout(() => {
       if (state.pendingRequests.has(requestId)) {
         state.pendingRequests.delete(requestId);
@@ -174,98 +165,79 @@ async function sendClipboardRequest(action, payload) {
       }
     }, CONFIG.requestTimeout);
     
-    // Start the clipboard bridge flow
-    executeClipboardFlow(request);
+    executeButtonFlow(request);
     state.stats.requestsSent++;
   });
 }
 
-// Execute clipboard bridge flow
-async function executeClipboardFlow(request) {
+// Execute the button-based clipboard flow
+async function executeButtonFlow(request) {
   try {
     state.isProcessing = true;
     
-    console.log('[Coordinator] Starting clipboard flow for request:', request.id);
+    console.log('[Coordinator] Starting button-based flow for request:', request.id);
     
     // Step 1: Save current clipboard
     sendJavaCommand({ cmd: 'SAVE_CLIPBOARD' });
     await sleep(100);
     
-    // Step 2: Save mouse position
-    sendJavaCommand({ cmd: 'SAVE_MOUSE' });
-    await sleep(100);
-    
-    // Step 3: Set request in clipboard
+    // Step 2: Set request in clipboard
     const requestText = JSON.stringify(request) + '|||CCC_END|||';
     sendJavaCommand({ cmd: 'SET_CLIPBOARD', data: requestText });
-    await sleep(100);
+    await sleep(200);
     
-    // Step 4: Start click loop
-    sendJavaCommand({
-      cmd: 'CLICK_LOOP',
-      x: state.browserPosition.x,
-      y: state.browserPosition.y,
-      interval: CONFIG.clickInterval,
-      maxDuration: CONFIG.maxClickDuration
-    });
+    // Step 3: Click READ button (multiple times to ensure it reads)
+    console.log('[Coordinator] Clicking READ button...');
+    for (let i = 0; i < 3; i++) {
+      sendJavaCommand({
+        cmd: 'CLICK_LOOP',
+        x: state.buttonPositions.read.x,
+        y: state.buttonPositions.read.y,
+        interval: 500,
+        maxDuration: 2000 // Click for 2 seconds
+      });
+      await sleep(2500);
+      sendJavaCommand({ cmd: 'STOP_CLICKING' });
+      await sleep(500);
+    }
     
-    // Step 5: Start polling for response
-    pollForResponse(request.id);
+    // Step 4: Click WRITE button to get response
+    console.log('[Coordinator] Clicking WRITE button...');
+    for (let i = 0; i < 3; i++) {
+      sendJavaCommand({
+        cmd: 'CLICK_LOOP',
+        x: state.buttonPositions.write.x,
+        y: state.buttonPositions.write.y,
+        interval: 500,
+        maxDuration: 2000
+      });
+      await sleep(2500);
+      sendJavaCommand({ cmd: 'STOP_CLICKING' });
+      
+      // Check clipboard for response
+      sendJavaCommand({ cmd: 'GET_CLIPBOARD' });
+      await sleep(500);
+    }
+    
+    // Step 5: Final cleanup after timeout
+    setTimeout(() => {
+      sendJavaCommand({ cmd: 'RESTORE_CLIPBOARD' });
+      state.isProcessing = false;
+    }, 15000);
     
   } catch (error) {
-    console.error('[Coordinator] Clipboard flow error:', error);
+    console.error('[Coordinator] Button flow error:', error);
     state.isProcessing = false;
     
-    // Cleanup
     sendJavaCommand({ cmd: 'STOP_CLICKING' });
     sendJavaCommand({ cmd: 'RESTORE_CLIPBOARD' });
-    sendJavaCommand({ cmd: 'RESTORE_MOUSE' });
   }
-}
-
-// Poll for response in clipboard
-function pollForResponse(requestId) {
-  const pollInterval = setInterval(() => {
-    sendJavaCommand({ cmd: 'GET_CLIPBOARD' });
-  }, 500);
-  
-  // Stop polling after timeout
-  setTimeout(() => {
-    clearInterval(pollInterval);
-    
-    // Cleanup
-    sendJavaCommand({ cmd: 'STOP_CLICKING' });
-    sendJavaCommand({ cmd: 'RESTORE_CLIPBOARD' });
-    sendJavaCommand({ cmd: 'RESTORE_MOUSE' });
-    
-    state.isProcessing = false;
-  }, CONFIG.requestTimeout);
 }
 
 // Check clipboard content for response
 function checkClipboardForResponse(clipboardContent) {
   if (!clipboardContent) return;
   
-  // Check for acknowledgment
-  if (clipboardContent.includes('|||BROWSER_ACK:')) {
-    const ackId = clipboardContent.match(/\|\|\|BROWSER_ACK:([^|]+)\|\|\|/)?.[1];
-    console.log('[Coordinator] Received ACK for:', ackId);
-    return;
-  }
-  
-  // Check for progress update
-  if (clipboardContent.includes('BROWSER_PROGRESS')) {
-    try {
-      const progressText = clipboardContent.split('|||BROWSER_PROGRESS|||')[0];
-      const progress = JSON.parse(progressText);
-      console.log('[Coordinator] Progress update:', progress.payload?.accumulated?.length, 'chars');
-    } catch (e) {
-      // Ignore parse errors
-    }
-    return;
-  }
-  
-  // Check for final response
   if (clipboardContent.includes('BROWSER_RESPONSE')) {
     try {
       const responseText = clipboardContent.split('|||BROWSER_END|||')[0];
@@ -273,17 +245,10 @@ function checkClipboardForResponse(clipboardContent) {
       
       console.log('[Coordinator] Received response for:', response.id);
       
-      // Find pending request
       const pending = state.pendingRequests.get(response.id);
       if (pending) {
-        // Stop clicking
-        sendJavaCommand({ cmd: 'STOP_CLICKING' });
-        
-        // Restore clipboard and mouse
         sendJavaCommand({ cmd: 'RESTORE_CLIPBOARD' });
-        sendJavaCommand({ cmd: 'RESTORE_MOUSE' });
         
-        // Resolve request
         pending.resolve(response);
         state.pendingRequests.delete(response.id);
         state.stats.responsesReceived++;
@@ -299,19 +264,14 @@ function checkClipboardForResponse(clipboardContent) {
 // Handle click loop completion
 function handleClickLoopComplete(data) {
   console.log('[Coordinator] Click loop completed:', data);
-  
-  // Restore state
-  sendJavaCommand({ cmd: 'RESTORE_CLIPBOARD' });
-  sendJavaCommand({ cmd: 'RESTORE_MOUSE' });
-  
-  state.isProcessing = false;
 }
 
-// Calibrate browser position
-function calibrateBrowser(x, y) {
-  state.browserPosition = { x, y };
+// Calibrate button positions
+function calibrateButtons(readX, readY, writeX, writeY) {
+  state.buttonPositions.read = { x: readX, y: readY };
+  state.buttonPositions.write = { x: writeX, y: writeY };
   state.calibrated = true;
-  console.log('[Coordinator] Browser position calibrated:', state.browserPosition);
+  console.log('[Coordinator] Button positions calibrated:', state.buttonPositions);
   return true;
 }
 
@@ -326,7 +286,6 @@ function startHttpServer() {
     const parsedUrl = url.parse(req.url, true);
     const pathname = parsedUrl.pathname;
     
-    // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -338,12 +297,10 @@ function startHttpServer() {
     }
     
     try {
-      // API endpoints
       switch (pathname) {
         case '/':
           res.writeHead(200, { 'Content-Type': 'text/html' });
-          res.end('<h1>CCC Coordinator Running</h1><p>Java Agent: ' + 
-                  (state.javaAgent ? 'Active' : 'Inactive') + '</p>');
+          res.end('<h1>CCC Coordinator Running</h1>');
           break;
           
         case '/api/status':
@@ -352,20 +309,42 @@ function startHttpServer() {
             javaAgent: state.javaAgent ? 'active' : 'inactive',
             processing: state.isProcessing,
             calibrated: state.calibrated,
+            buttonPositions: state.buttonPositions,
             stats: state.stats,
             pendingRequests: state.pendingRequests.size
           }));
           break;
           
         case '/api/calibrate':
-          const { x, y } = parsedUrl.query;
-          if (x && y) {
-            calibrateBrowser(parseInt(x), parseInt(y));
+          // Supports both: ?readX=X&readY=Y&writeX=X&writeY=Y OR ?x=X&y=Y (backwards compatibility)
+          const { readX, readY, writeX, writeY, x, y } = parsedUrl.query;
+          
+          // New button-based approach
+          if (readX && readY && writeX && writeY) {
+            calibrateButtons(
+              parseInt(readX), parseInt(readY),
+              parseInt(writeX), parseInt(writeY)
+            );
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ success: true, position: state.browserPosition }));
-          } else {
+            res.end(JSON.stringify({ success: true, positions: state.buttonPositions }));
+          } 
+          // Backwards compatibility - single position sets both buttons to same location
+          else if (x && y) {
+            const posX = parseInt(x);
+            const posY = parseInt(y);
+            calibrateButtons(posX, posY, posX, posY);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ 
+              success: true, 
+              positions: state.buttonPositions,
+              note: 'Single position mode - both buttons set to same location'
+            }));
+          } 
+          else {
             res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Missing x or y parameter' }));
+            res.end(JSON.stringify({ 
+              error: 'Need either (readX, readY, writeX, writeY) or (x, y) parameters' 
+            }));
           }
           break;
           
@@ -375,7 +354,7 @@ function startHttpServer() {
             
             if (!state.calibrated) {
               res.writeHead(400, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ error: 'Browser not calibrated' }));
+              res.end(JSON.stringify({ error: 'Buttons not calibrated' }));
               return;
             }
             
@@ -395,17 +374,6 @@ function startHttpServer() {
             res.writeHead(405);
             res.end();
           }
-          break;
-          
-        case '/api/test':
-          // Test clipboard bridge
-          sendJavaCommand({ cmd: 'SET_CLIPBOARD', data: 'Test from coordinator' });
-          setTimeout(() => {
-            sendJavaCommand({ cmd: 'GET_CLIPBOARD' });
-          }, 100);
-          
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ test: 'initiated' }));
           break;
           
         default:
@@ -442,21 +410,18 @@ function parseBody(req) {
 
 // Main initialization
 async function initialize() {
-  console.log('[Coordinator] CCC Node.js Coordinator Starting...');
+  console.log('[Coordinator] Starting with button-based approach...');
   console.log('[Coordinator] Configuration:', CONFIG);
   
   try {
-    // Start Java agent
     await startJavaAgent();
-    
-    // Start HTTP server
     startHttpServer();
     
-    // Set initial status
     sendJavaCommand({ cmd: 'SET_STATUS', message: 'CCC Ready' });
     
     console.log('[Coordinator] Initialization complete');
-    console.log(`[Coordinator] Please calibrate browser position at http://localhost:${CONFIG.serverPort}/api/calibrate?x=X&y=Y`);
+    console.log('[Coordinator] Calibrate buttons at:');
+    console.log(`  http://localhost:${CONFIG.serverPort}/api/calibrate?readX=X&readY=Y&writeX=X&writeY=Y`);
     
   } catch (error) {
     console.error('[Coordinator] Initialization failed:', error);
@@ -470,7 +435,6 @@ process.on('SIGINT', () => {
   
   if (state.javaAgent) {
     sendJavaCommand({ cmd: 'RESTORE_CLIPBOARD' });
-    sendJavaCommand({ cmd: 'RESTORE_MOUSE' });
     state.javaAgent.kill();
   }
   

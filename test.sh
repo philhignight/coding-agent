@@ -27,7 +27,7 @@ echo "Starting CCC components..."
 echo ""
 
 # Compile Java agent if needed
-if [ ! -f "src/java-agent/agent.jar" ]; then
+if [ ! -f "src/java-agent/agent.jar" ] && [ ! -f "src/java-agent/agent-headless.jar" ]; then
     echo "Compiling Java agent..."
     cd src/java-agent
     chmod +x compile.sh

@@ -10,8 +10,8 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-# Check if agent.jar exists
-if [ ! -f "src/java-agent/agent.jar" ]; then
+# Check if Java agent is compiled
+if [ ! -f "src/java-agent/agent.jar" ] && [ ! -f "src/java-agent/agent-headless.jar" ]; then
     echo "Compiling Java agent..."
     ./compile.sh
 fi

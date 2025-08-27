@@ -8,6 +8,7 @@ This is a minimal implementation of the CCC system that bridges a local IDE with
 2. **Java Agent** (`src/java-agent/`) - Handles clipboard and mouse operations
 3. **Browser Bridge** (`src/browser-bridge/`) - JavaScript to inject into the Claude UI
 4. **Node Coordinator** (`src/node-server/`) - Orchestrates communication between components
+5. **Calibration Tools** (`tools/`) - Button position calibration utilities
 
 ## Prerequisites
 - Java 8 or higher
@@ -30,10 +31,15 @@ This will:
 ### 2. Open the mock UI
 Open http://localhost:3001 in your browser. You should see a green overlay saying "CLICK HERE TO POLL".
 
-### 3. Calibrate the browser position
+### 3. Calibrate button positions
 ```bash
-# Replace 500,500 with the actual center coordinates of the green area
-curl 'http://localhost:3000/api/calibrate?x=500&y=500'
+# Use the calibration tool to capture button positions
+cd tools
+javac CalibrateButtons.java
+java CalibrateButtons
+# Or use QuickCalibrate for a simpler approach
+javac QuickCalibrate.java
+java QuickCalibrate
 ```
 
 ### 4. Test a chat request
@@ -48,8 +54,9 @@ curl -X POST http://localhost:3000/api/chat \
 ### 1. Prepare the browser bridge
 1. Open the internal Claude UI in your browser
 2. Open the browser console (F12)
-3. Copy and paste the contents of `src/browser-bridge/bridge.js`
-4. The screen should turn green with "CCC BRIDGE READY"
+3. For testing with visible buttons: Copy and paste the contents of `src/browser-bridge/bridge-mock.js`
+4. For production with full overlay: Copy and paste the contents of `src/browser-bridge/bridge.js`
+5. You should see either "CCC BRIDGE ACTIVE" (mock) or green overlay "CCC BRIDGE READY" (production)
 
 ### 2. Start the coordinator
 ```bash
@@ -62,10 +69,14 @@ cd ../..
 node src/node-server/coordinator.js
 ```
 
-### 3. Calibrate browser position
-1. Position your browser window on a second monitor
-2. Note the center coordinates of the green overlay
-3. Calibrate: `curl 'http://localhost:3000/api/calibrate?x=X&y=Y'`
+### 3. Calibrate button positions
+1. Position your browser window
+2. Run the calibration tool:
+   ```bash
+   cd tools && javac CalibrateButtons.java && java CalibrateButtons
+   ```
+3. Follow the prompts to capture READ and WRITE button positions
+4. The tool will output the calibration command
 
 ### 4. Use the system
 Send chat requests to the coordinator API, which will route them through the clipboard bridge.
@@ -89,12 +100,13 @@ Send chat requests to the coordinator API, which will route them through the cli
 1. User sends request to Coordinator API
 2. Coordinator saves clipboard and mouse state
 3. Coordinator writes request to clipboard
-4. Java agent clicks on browser to trigger polling
-5. Browser bridge reads clipboard and processes request
+4. Java agent clicks READ button multiple times to trigger polling
+5. Browser bridge reads clipboard when READ button is clicked
 6. Browser bridge makes API calls to Claude backend
-7. Browser bridge writes response to clipboard
-8. Coordinator reads response and returns to user
-9. Coordinator restores clipboard and mouse state
+7. Java agent clicks WRITE button
+8. Browser bridge writes response to clipboard when WRITE button is clicked
+9. Coordinator reads response and returns to user
+10. Coordinator restores clipboard and mouse state
 
 ## Troubleshooting
 

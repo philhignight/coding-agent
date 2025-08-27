@@ -68,13 +68,9 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   
-  // Serve UI page (use fixed version if available)
+  // Serve UI page
   if (pathname === '/' && req.method === 'GET') {
-    // Try fixed UI first, fall back to original
-    let htmlPath = path.join(__dirname, 'ui-fixed.html');
-    if (!fs.existsSync(htmlPath)) {
-      htmlPath = path.join(__dirname, 'ui.html');
-    }
+    const htmlPath = path.join(__dirname, 'ui.html');
     
     if (fs.existsSync(htmlPath)) {
       res.writeHead(200, { 'Content-Type': 'text/html' });

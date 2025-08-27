@@ -46,7 +46,9 @@ test.bat
 ### Batch Files (.bat)
 - `compile.bat` - Compiles Java agents
 - `start.bat` - Starts mock server and coordinator in separate windows
+- `start-windows.bat` - Starts only Windows components (coordinator)
 - `test.bat` - Runs basic tests
+- `calibrate.bat` - Runs button calibration tool
 
 ### PowerShell Script (.ps1)
 For better process management, use PowerShell:
@@ -61,8 +63,11 @@ powershell -ExecutionPolicy Bypass -File start.ps1
 # Check status
 curl http://localhost:3000/api/status
 
-# Calibrate browser position
-curl "http://localhost:3000/api/calibrate?x=500&y=500"
+# Calibrate button positions
+cd tools
+javac CalibrateButtons.java
+java CalibrateButtons
+# Follow prompts to click READ and WRITE buttons
 
 # Send chat request
 curl -X POST http://localhost:3000/api/chat -H "Content-Type: application/json" -d "{\"message\":\"Hello\"}"
@@ -73,8 +78,8 @@ curl -X POST http://localhost:3000/api/chat -H "Content-Type: application/json" 
 # Check status
 Invoke-RestMethod -Uri "http://localhost:3000/api/status"
 
-# Calibrate browser position
-Invoke-RestMethod -Uri "http://localhost:3000/api/calibrate?x=500&y=500"
+# Calibrate button positions (run the calibrate.bat instead)
+calibrate.bat
 
 # Send chat request
 $body = @{message="Hello"} | ConvertTo-Json
@@ -87,22 +92,28 @@ Invoke-RestMethod -Uri "http://localhost:3000/api/chat" -Method Post -Body $body
 1. Open your internal Claude UI in Chrome/Edge
 2. Open Developer Console (F12)
 3. Go to Console tab
-4. Copy the entire contents of `src/browser-bridge/bridge.js`
+4. Choose the appropriate bridge script:
+   - For testing: Copy contents of `src/browser-bridge/bridge-mock.js`
+   - For production: Copy contents of `src/browser-bridge/bridge.js`
 5. Paste into console and press Enter
-6. Screen should turn green with "CCC BRIDGE READY"
+6. You should see:
+   - Testing: "CCC BRIDGE ACTIVE" badge with visible buttons
+   - Production: Green overlay with "CCC BRIDGE READY"
 
 ### 2. Start the Coordinator
 ```cmd
 start.bat
 ```
 
-### 3. Calibrate
-1. Note the position of the green overlay in your browser
-2. Use screen coordinates (not window-relative)
-3. Calibrate:
-```powershell
-Invoke-RestMethod -Uri "http://localhost:3000/api/calibrate?x=ACTUAL_X&y=ACTUAL_Y"
+### 3. Calibrate Button Positions
+1. Run the calibration tool:
+```cmd
+calibrate.bat
 ```
+2. When prompted, click on the READ button
+3. When prompted again, click on the WRITE button
+4. The tool will output a calibration command
+5. Copy and run the provided command
 
 ### 4. Test
 Send a test message:
@@ -115,8 +126,8 @@ Invoke-RestMethod -Uri "http://localhost:3000/api/chat" -Method Post -Body $body
 
 ### Java Issues
 - **"javac not found"**: Install JDK (not just JRE), add to PATH
-- **"Cannot find symbol BufferedImage"**: Already fixed in the code
-- **System tray not appearing**: Normal on Windows, agent still works
+- **"Cannot find symbol BufferedImage"**: Make sure you have full JDK installed
+- **System tray not appearing**: Use ClipboardAgentHeadless.java for headless environments
 
 ### Node.js Issues
 - **"node not found"**: Add Node.js to PATH after installation
@@ -149,8 +160,11 @@ node mock-env\server.js
 # Coordinator only
 node src\node-server\coordinator.js
 
-# Java agent only (for testing)
-java -jar src\java-agent\agent.jar
+# Java agent only (GUI version)
+java ClipboardAgent
+
+# Java agent headless version
+java ClipboardAgentHeadless
 ```
 
 ### Viewing Logs
@@ -164,11 +178,22 @@ code .
 
 ## API Endpoints
 
-- `GET http://localhost:3000/api/status` - System status
-- `GET http://localhost:3000/api/calibrate?x=X&y=Y` - Set browser position
-- `POST http://localhost:3000/api/chat` - Send chat message
-- `GET http://localhost:3000/api/test` - Test clipboard operations
+- `GET http://localhost:5555/api/status` - System status (Note: coordinator runs on port 5555)
+- `GET http://localhost:5555/api/calibrate?x=X&y=Y` - Set button positions
+- `POST http://localhost:5555/api/chat` - Send chat message
+- `GET http://localhost:5555/api/test` - Test clipboard operations
 
 ## Mock UI
 
-Open http://localhost:3001 in your browser to see the mock internal UI. This simulates the Claude interface for testing.
+- Local testing: Open http://localhost:3001 in your browser
+- Remote testing: Open http://dailyernest.com:5556 in your browser
+
+The mock UI simulates the Claude interface with READ and WRITE buttons for clipboard operations.
+
+## Calibration Tools
+
+The `tools` directory contains calibration utilities:
+- `CalibrateButtons.java` - Interactive calibration with 3-second countdown
+- `QuickCalibrate.java` - Immediate calibration without countdown
+
+Use `calibrate.bat` for the easiest calibration experience.

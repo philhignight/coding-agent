@@ -81,11 +81,12 @@ A Windows-based clone of Claude Code that interfaces with an internal Claude web
   "checksum": "sha256-hash"
 }
 |||BROWSER_END|||
-
-// Acknowledgments
-|||CCC_ACK:request-id|||
-|||BROWSER_ACK:request-id|||
 ```
+
+### Button-Based Triggering
+The system uses two dedicated buttons for clipboard operations:
+- **READ Button**: Clicked multiple times to poll for requests
+- **WRITE Button**: Clicked once to trigger response write
 
 ### Java Agent Command Protocol
 
@@ -115,10 +116,10 @@ A Windows-based clone of Claude Code that interfaces with an internal Claude web
 ### 2. Browser Focus and Click Reliability
 - **Risk**: Browser loses focus, clicks don't register, wrong window clicked
 - **Strategies**:
-  - **S2.1**: Full-screen click target with visual feedback
-  - **S2.2**: Color-coded browser state (green=ready, yellow=processing, red=error)
-  - **S2.3**: Initial calibration step to capture browser position
-  - **S2.4**: Continuous clicking with interval to handle timing issues
+  - **S2.1**: Dedicated READ/WRITE buttons with visual feedback
+  - **S2.2**: Color-coded button states (green=ready, yellow=processing)
+  - **S2.3**: Button calibration tool with countdown timer
+  - **S2.4**: Multiple READ clicks to ensure request detection
   - **S2.5**: Audio feedback for successful operations (optional)
 
 ### 3. Message Integrity and Ordering
@@ -287,13 +288,14 @@ A Windows-based clone of Claude Code that interfaces with an internal Claude web
 8. Return to primary monitor
 
 ### Session Calibration (Per-session)
-1. Start CCC from system tray
-2. CCC prompts for browser calibration
-3. User hovers mouse over browser window
-4. User presses calibration hotkey (Ctrl+Alt+C)
-5. CCC captures position and performs test click
-6. Browser confirms receipt via clipboard
-7. CCC shows "Ready" status
+1. Start CCC components
+2. Run calibration tool (CalibrateButtons.java)
+3. Tool shows 3-second countdown
+4. User clicks READ button when prompted
+5. User clicks WRITE button when prompted
+6. Tool generates calibration command
+7. User runs calibration command
+8. System shows "Ready" status
 
 ## Failure Modes and Recovery
 
@@ -397,6 +399,8 @@ Create a minimal HTML page that:
 2. Provides same-origin API endpoints
 3. Allows bridge script injection
 4. Simulates the internal UI URL structure
+5. Includes READ and WRITE buttons for clipboard operations
+6. Provides visual feedback when buttons are clicked
 
 ### Mock Data Flows
 
@@ -562,9 +566,10 @@ eventSource.onmessage = (event) => {
 - Easier distribution than C++ binaries
 - Good JSON handling libraries
 
-### Why Full-screen Click Target?
-- Ensures click always registers
-- Visual feedback for user confidence
-- Prevents accidental clicks on UI elements
-- Simple to implement and maintain
-- Clear indication of system state
+### Why Button-Based Click Targets?
+- More reliable than coordinate-based clicking
+- Visual feedback on each operation
+- Easy calibration with just two points
+- Works across different screen resolutions
+- Clear indication of operation type (READ vs WRITE)
+- Simplified debugging with visible buttons in test mode

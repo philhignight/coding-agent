@@ -7,7 +7,7 @@
 
 **Components**:
 - `mock-env/server.js` - Mock API server (port 5556)
-- `mock-env/ui-fixed.html` - Mock UI that simulates internal Claude interface
+- `mock-env/ui.html` - Mock UI that simulates internal Claude interface
 
 **Access**: http://dailyernest.com:5556
 
@@ -15,9 +15,11 @@
 **Purpose**: Controls your local clipboard and mouse
 
 **Components**:
-- `src/java-agent/ClipboardAgent.java` - Controls Windows clipboard and mouse
+- `src/java-agent/ClipboardAgent.java` - GUI version with system tray
+- `src/java-agent/ClipboardAgentHeadless.java` - Headless version for servers
 - `src/node-server/coordinator.js` - Orchestrates the clipboard bridge
-- `tools/CalibrateButtons.java` - Helps calibrate mouse positions
+- `tools/CalibrateButtons.java` - Interactive button calibration with countdown
+- `tools/QuickCalibrate.java` - Quick button calibration without countdown
 
 **Access**: http://localhost:5555 (coordinator API)
 
@@ -25,8 +27,9 @@
 **Purpose**: Bridge between local clipboard and remote mock UI
 
 **Components**:
-- `src/browser-bridge/bridge.js` - Paste into browser console
-- Reads/writes to LOCAL clipboard when clicked
+- `src/browser-bridge/bridge.js` - Production version with full overlay
+- `src/browser-bridge/bridge-mock.js` - Testing version with visible buttons
+- Reads/writes to LOCAL clipboard when buttons are clicked
 - Communicates with mock API on Linux server
 
 ## Data Flow
@@ -36,19 +39,21 @@
    ↓
 2. Coordinator puts request in Windows clipboard
    ↓
-3. Java Agent clicks on browser
+3. Java Agent clicks READ button (multiple times)
    ↓
-4. Browser bridge script reads clipboard
+4. Browser bridge reads clipboard on button click
    ↓
 5. Bridge sends request to Mock API (Linux server)
    ↓
 6. Mock API processes and returns response
    ↓
-7. Bridge writes response to clipboard
+7. Java Agent clicks WRITE button
    ↓
-8. Coordinator reads response from clipboard
+8. Bridge writes response to clipboard on button click
    ↓
-9. Windows App receives response
+9. Coordinator reads response from clipboard
+   ↓
+10. Windows App receives response
 ```
 
 ## Setup Order
@@ -66,8 +71,10 @@
 ### In Browser (on Windows):
 1. Open http://dailyernest.com:5556
 2. Open console (F12)
-3. Paste contents of `src/browser-bridge/bridge.js`
-4. See green overlay "CCC BRIDGE READY"
+3. For testing: Paste contents of `src/browser-bridge/bridge-mock.js`
+   - See "CCC BRIDGE ACTIVE" badge with buttons visible
+4. For production: Paste contents of `src/browser-bridge/bridge.js`
+   - See green overlay "CCC BRIDGE READY"
 
 ### Test:
 From Windows PowerShell:
@@ -87,12 +94,24 @@ Invoke-RestMethod -Uri "http://localhost:5555/api/chat" -Method Post -Body $body
 
 ### Mock Testing (Current):
 - Browser loads from dailyernest.com:5556
-- Mock API responds with fake responses
+- Uses bridge-mock.js for visible button feedback
+- Mock API responds with simulated responses
 - Tests the clipboard bridge mechanism
 
 ### Production (Future):
 - Browser loads actual internal Claude UI
-- Bridge script injected into real UI
+- Uses bridge.js for full security overlay
 - Real API responses from internal system
+- Same button-based approach
 
-The clipboard bridge mechanism remains the same - only the UI/API endpoints change.
+## Button-Based Architecture
+
+The system uses a standardized two-button approach:
+- **READ Button**: Triggers clipboard read operations
+- **WRITE Button**: Triggers clipboard write operations
+
+This design:
+- Eliminates coordinate-based clicking issues
+- Provides visual feedback during operations
+- Works consistently across different UI layouts
+- Simplifies calibration to just two points

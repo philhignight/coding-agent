@@ -7,8 +7,8 @@ echo "CCC Quick Start"
 echo "================================"
 echo ""
 
-# Check if agent.jar exists
-if [ ! -f "src/java-agent/agent.jar" ]; then
+# Check if Java agent is compiled
+if [ ! -f "src/java-agent/agent.jar" ] && [ ! -f "src/java-agent/agent-headless.jar" ]; then
     echo "Java agent not compiled. Running compile script..."
     ./compile.sh
     if [ $? -ne 0 ]; then

@@ -1,13 +1,12 @@
 @echo off
 echo ================================
-echo CCC Windows Local Components
+echo CCC Windows Local Setup
 echo ================================
 echo.
-echo This runs the LOCAL components on your Windows machine:
-echo - Java Agent (controls YOUR clipboard and mouse)
-echo - Coordinator (manages the clipboard bridge)
-echo.
-echo The Mock UI is already running on dailyernest.com:5556
+echo This runs ALL components locally on Windows for testing:
+echo - Mock UI Server (port 5556)
+echo - Coordinator (port 5555)
+echo - Java Agent (clipboard/mouse control)
 echo.
 
 REM Check if agent.jar exists locally
@@ -20,37 +19,45 @@ if not exist "src\java-agent\agent.jar" (
     )
 )
 
-echo Starting LOCAL components...
+echo Starting ALL components locally...
 echo.
 
-REM Start coordinator LOCALLY on Windows (port 5555)
-echo Starting LOCAL coordinator on port 5555...
-start "CCC Local Coordinator" cmd /k node src\node-server\coordinator.js
+REM Set environment variables for local ports
+set MOCK_PORT=5556
+set COORDINATOR_PORT=5555
+
+REM Start mock server LOCALLY on Windows
+echo Starting LOCAL mock server on port %MOCK_PORT%...
+start "CCC Mock Server" cmd /k node mock-env\server.js
+
+REM Wait a bit for mock server to start
+timeout /t 2 /nobreak >nul
+
+REM Start coordinator LOCALLY on Windows
+echo Starting LOCAL coordinator on port %COORDINATOR_PORT%...
+start "CCC Coordinator" cmd /k node src\node-server\coordinator.js
 
 echo.
 echo ================================
-echo LOCAL Components Running!
+echo All Components Running Locally!
 echo ================================
 echo.
-echo LOCAL Services (on your Windows machine):
+echo LOCAL Services on your Windows machine:
+echo   Mock UI:     http://localhost:5556
 echo   Coordinator: http://localhost:5555
-echo   Java Agent: Running in system tray
-echo.
-echo REMOTE Mock UI (on Linux server):
-echo   Browser UI: http://dailyernest.com:5556
+echo   Java Agent:  Running (system tray)
 echo.
 echo ================================
 echo SETUP STEPS:
 echo ================================
 echo.
-echo 1. Open http://dailyernest.com:5556 in your browser
-echo    (This loads the mock UI from the Linux server)
+echo 1. Open http://localhost:5556 in your browser
+echo    (This uses localhost which allows clipboard access)
 echo.
 echo 2. Open browser console (F12) and paste bridge script:
-echo    For testing with mock UI: Copy from src\browser-bridge\bridge-mock.js
-echo    For production: Copy from src\browser-bridge\bridge.js
+echo    Copy ALL contents from src\browser-bridge\bridge-mock.js
 echo.
-echo 3. Calibrate your LOCAL mouse positions:
+echo 3. Calibrate your mouse positions:
 echo    Run: calibrate.bat
 echo.
 echo 4. Test the bridge:
@@ -58,6 +65,8 @@ echo    PowerShell:
 echo    $body = @{message="Hello"} ^| ConvertTo-Json
 echo    Invoke-RestMethod -Uri "http://localhost:5555/api/chat" -Method Post -Body $body -ContentType "application/json"
 echo.
-echo The coordinator window will show the bridge activity
+echo Two command windows have been opened:
+echo - Mock Server window
+echo - Coordinator window
 echo.
 pause

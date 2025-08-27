@@ -14,45 +14,41 @@ if not exist "src\java-agent\agent.jar" (
     )
 )
 
-echo Starting CCC components...
+echo Starting CCC components locally...
 echo.
 
-REM Start mock server in new window
-echo Starting mock API server on port 3001...
+REM Set proper ports
+set MOCK_PORT=5556
+set COORDINATOR_PORT=5555
+
+REM Start mock server locally
+echo Starting mock server on localhost:%MOCK_PORT%...
 start "CCC Mock Server" cmd /k node mock-env\server.js
 
-REM Wait a moment for mock server to start
+REM Wait for mock server to start
 timeout /t 2 /nobreak >nul
 
-REM Start coordinator in new window
-echo Starting coordinator on port 3000...
+REM Start coordinator locally
+echo Starting coordinator on localhost:%COORDINATOR_PORT%...
 start "CCC Coordinator" cmd /k node src\node-server\coordinator.js
 
 echo.
 echo ================================
-echo CCC is running!
+echo CCC is running locally!
 echo ================================
 echo.
-echo Mock UI:     http://localhost:3001
-echo Coordinator: http://localhost:3000
+echo Mock UI:     http://localhost:5556
+echo Coordinator: http://localhost:5555
 echo.
-echo Two new windows have been opened:
-echo - "CCC Mock Server" - Mock API server
-echo - "CCC Coordinator" - Main coordinator
+echo Using localhost allows clipboard access!
 echo.
 echo Next steps:
-echo 1. Open http://localhost:3001 in your browser
-echo 2. Note the center position of the green area
-echo 3. Calibrate using curl or PowerShell:
-echo    curl "http://localhost:3000/api/calibrate?x=500&y=500"
+echo 1. Open http://localhost:5556 in your browser
+echo 2. Paste bridge-mock.js in console (F12)
+echo 3. Run calibrate.bat
+echo 4. Test with PowerShell:
 echo.
-echo 4. Test with:
-echo    curl -X POST http://localhost:3000/api/chat -H "Content-Type: application/json" -d "{\"message\":\"Hello\"}"
-echo.
-echo Or using PowerShell:
-echo    Invoke-WebRequest -Uri "http://localhost:3000/api/calibrate?x=500&y=500"
-echo    Invoke-WebRequest -Uri "http://localhost:3000/api/chat" -Method POST -ContentType "application/json" -Body '{\"message\":\"Hello\"}'
-echo.
-echo To stop: Close the two command windows that were opened
+echo $body = @{message="Hello"} ^| ConvertTo-Json
+echo Invoke-RestMethod -Uri "http://localhost:5555/api/chat" -Method Post -Body $body -ContentType "application/json"
 echo.
 pause

@@ -46,8 +46,9 @@ echo.
 echo 1. Open http://dailyernest.com:5556 in your browser
 echo    (This loads the mock UI from the Linux server)
 echo.
-echo 2. Open browser console (F12) and paste bridge.js:
-echo    Copy all contents from src\browser-bridge\bridge.js
+echo 2. Open browser console (F12) and paste bridge script:
+echo    For testing with mock UI: Copy from src\browser-bridge\bridge-mock.js
+echo    For production: Copy from src\browser-bridge\bridge.js
 echo.
 echo 3. Calibrate your LOCAL mouse positions:
 echo    Run: calibrate.bat

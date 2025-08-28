@@ -367,6 +367,7 @@
     if (bridgeState === 'ready') {
       try {
         const clipboardText = await navigator.clipboard.readText();
+        console.log('[CCC Bridge API] Clipboard content:', clipboardText.substring(0, 100) + '...');
         
         if (clipboardText.includes('CCC_REQUEST')) {
           const requestEnd = clipboardText.indexOf('|||CCC_END|||');
@@ -387,6 +388,8 @@
             
             setTimeout(() => updateDisplay('ready', 'Waiting for AI requests...'), 3000);
           }
+        } else {
+          console.log('[CCC Bridge API] No CCC_REQUEST found in clipboard');
         }
       } catch (err) {
         console.error('[CCC Bridge API] Error:', err);

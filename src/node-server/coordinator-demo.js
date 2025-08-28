@@ -136,6 +136,11 @@ function checkClipboardContent(content) {
         console.log('Content:', response.payload.content);
         console.log('================================\n');
         
+        // Stop polling
+        if (state.responseFound) {
+          state.responseFound();
+        }
+        
         // Update status
         sendJavaCommand({ cmd: 'SET_STATUS', message: 'CCC Demo - Success! Check console for response.' });
         
@@ -211,46 +216,72 @@ async function sendAIRequest() {
   // Set clipboard
   sendJavaCommand({ cmd: 'SET_CLIPBOARD', data: requestText });
   
-  // Wait a bit then click
+  // Wait longer for clipboard to be set
   setTimeout(() => {
+    console.log('[Demo] Request in clipboard, starting clicks...');
     console.log('[Demo] Clicking at calibrated position:', CONFIG.clickPosition);
     
-    // Click multiple times to ensure bridge reads it
-    let clicks = 0;
-    const clickInterval = setInterval(() => {
-      sendJavaCommand({
-        cmd: 'CLICK_LOOP',
-        x: CONFIG.clickPosition.x,
-        y: CONFIG.clickPosition.y,
-        interval: 500,
-        maxDuration: 1000
-      });
-      
-      clicks++;
-      if (clicks >= 3) {
-        clearInterval(clickInterval);
-        
-        // Start polling for response
-        setTimeout(() => pollForResponse(), 2000);
-      }
-    }, 1500);
+    // Single click first to check clipboard
+    sendJavaCommand({
+      cmd: 'CLICK_LOOP',
+      x: CONFIG.clickPosition.x,
+      y: CONFIG.clickPosition.y,
+      interval: 100,
+      maxDuration: 100  // Just one quick click
+    });
     
-  }, 1000);
+    // Then start polling for response
+    setTimeout(() => pollForResponse(), 1000);
+    
+  }, 2000); // Wait 2 seconds after setting clipboard
 }
 
 // Poll for AI response
 function pollForResponse() {
   console.log('[Demo] Waiting for AI response...');
   
+  let responseFound = false;
+  
+  // Poll clipboard
   const pollInterval = setInterval(() => {
-    sendJavaCommand({ cmd: 'GET_CLIPBOARD' });
-  }, 1000);
+    if (!responseFound) {
+      sendJavaCommand({ cmd: 'GET_CLIPBOARD' });
+    }
+  }, 500);
+  
+  // Also click periodically to trigger bridge
+  let clickCount = 0;
+  const clickInterval = setInterval(() => {
+    if (!responseFound && clickCount < 10) {
+      console.log('[Demo] Clicking again to check for response...');
+      sendJavaCommand({
+        cmd: 'CLICK_LOOP',
+        x: CONFIG.clickPosition.x,
+        y: CONFIG.clickPosition.y,
+        interval: 100,
+        maxDuration: 100
+      });
+      clickCount++;
+    } else if (responseFound || clickCount >= 10) {
+      clearInterval(clickInterval);
+    }
+  }, 2000);
+  
+  // Store intervals in state for cleanup
+  state.responseFound = () => {
+    responseFound = true;
+    clearInterval(pollInterval);
+    clearInterval(clickInterval);
+  };
   
   // Timeout after 30 seconds
   setTimeout(() => {
-    clearInterval(pollInterval);
-    console.error('[Demo] Response timeout!');
-    process.exit(1);
+    if (!responseFound) {
+      clearInterval(pollInterval);
+      clearInterval(clickInterval);
+      console.error('[Demo] Response timeout!');
+      process.exit(1);
+    }
   }, 30000);
 }
 

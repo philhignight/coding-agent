@@ -35,7 +35,7 @@ timeout /t 2 /nobreak >nul
 
 REM Auto-calibrate with hardcoded coordinates
 echo Auto-calibrating button positions...
-curl -s "http://localhost:5555/api/calibrate?readX=360&readY=296&writeX=630&writeY=287" >nul 2>&1
+curl -s "http://localhost:5555/api/calibrate?readX=360&readY=216&writeX=630&writeY=207" >nul 2>&1
 if %errorlevel% equ 0 (
     echo Calibration successful!
 ) else (
@@ -51,8 +51,8 @@ echo Mock UI:     http://localhost:5556
 echo Coordinator: http://localhost:5555
 echo.
 echo Button positions auto-calibrated:
-echo   READ:  X=360, Y=296
-echo   WRITE: X=630, Y=287
+echo   READ:  X=360, Y=216
+echo   WRITE: X=630, Y=207
 echo.
 echo Next steps:
 echo 1. Open http://localhost:5556 in your browser

@@ -73,10 +73,10 @@ Write-Host ""
 # Auto-calibrate with hardcoded coordinates
 Write-Host "Auto-calibrating button positions..." -ForegroundColor Yellow
 try {
-    $response = Invoke-RestMethod -Uri "http://localhost:5555/api/calibrate?readX=360&readY=296&writeX=630&writeY=287" -Method Get
+    $response = Invoke-RestMethod -Uri "http://localhost:5555/api/calibrate?readX=360&readY=216&writeX=630&writeY=207" -Method Get
     Write-Host "✓ Calibration successful!" -ForegroundColor Green
-    Write-Host "  READ button:  X=360, Y=296" -ForegroundColor Gray
-    Write-Host "  WRITE button: X=630, Y=287" -ForegroundColor Gray
+    Write-Host "  READ button:  X=360, Y=216" -ForegroundColor Gray
+    Write-Host "  WRITE button: X=630, Y=207" -ForegroundColor Gray
 } catch {
     Write-Host "⚠ Auto-calibration failed. You may need to calibrate manually." -ForegroundColor Yellow
 }

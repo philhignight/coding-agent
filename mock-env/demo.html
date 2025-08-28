@@ -88,12 +88,13 @@
       </ol>
     </div>
     
-    <button class="button" onclick="loadBridge()">Load Bridge Script</button>
-    <button class="button" onclick="loadBridgeAuto()">Auto-Load from Server</button>
+    <button class="button" onclick="loadBridge('calibrate')">Load Simple Bridge</button>
+    <button class="button" onclick="loadBridge('api')">Load API Bridge (Real Flow)</button>
+    <button class="button" onclick="setMockToken()">Set Mock Token</button>
     
     <div class="code-block">
       // Or manually paste this in your console (F12):<br>
-      fetch('/bridge-calibrate.js').then(r => r.text()).then(eval);
+      fetch('/bridge-api.js').then(r => r.text()).then(eval);
     </div>
     
     <div id="status">
@@ -109,31 +110,23 @@
       status.scrollTop = status.scrollHeight;
     }
     
-    async function loadBridge() {
-      updateStatus('Loading bridge script...');
+    async function loadBridge(type) {
+      const scriptName = type === 'api' ? 'bridge-api.js' : 'bridge-calibrate.js';
+      updateStatus(`Loading ${type} bridge script...`);
       
       try {
-        const response = await fetch('/bridge-calibrate.js');
+        const response = await fetch(`/${scriptName}`);
         const script = await response.text();
         eval(script);
-        updateStatus('Bridge loaded! Click anywhere to calibrate.');
+        updateStatus(`${type} bridge loaded! Click anywhere to calibrate.`);
       } catch (err) {
         updateStatus('Error loading bridge: ' + err.message);
       }
     }
     
-    async function loadBridgeAuto() {
-      updateStatus('Fetching bridge script from server...');
-      
-      try {
-        const script = document.createElement('script');
-        script.src = '/bridge-calibrate.js';
-        script.onload = () => updateStatus('Bridge loaded! Click anywhere to calibrate.');
-        script.onerror = () => updateStatus('Failed to load bridge script');
-        document.body.appendChild(script);
-      } catch (err) {
-        updateStatus('Error: ' + err.message);
-      }
+    function setMockToken() {
+      localStorage.setItem('token', 'mock-token-12345');
+      updateStatus('Mock token set in localStorage');
     }
     
     // Monitor clipboard access

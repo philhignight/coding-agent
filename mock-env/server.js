@@ -97,8 +97,9 @@ const server = http.createServer(async (req, res) => {
   }
   
   // Serve bridge scripts
-  if (pathname === '/bridge-calibrate.js' && req.method === 'GET') {
-    const scriptPath = path.join(__dirname, '..', 'src', 'browser-bridge', 'bridge-calibrate.js');
+  if ((pathname === '/bridge-calibrate.js' || pathname === '/bridge-api.js') && req.method === 'GET') {
+    const scriptName = pathname.substring(1); // Remove leading /
+    const scriptPath = path.join(__dirname, '..', 'src', 'browser-bridge', scriptName);
     
     if (fs.existsSync(scriptPath)) {
       res.writeHead(200, { 

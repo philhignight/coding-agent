@@ -22,11 +22,11 @@ if not exist "src\java-agent\agent.jar" (
 echo Starting demo coordinator...
 echo.
 echo INSTRUCTIONS:
-echo 1. Open any webpage in your browser
-echo 2. Open Developer Console (F12)
-echo 3. Copy and paste the contents of src\browser-bridge\bridge-calibrate.js
+echo 1. Start the mock server first: node mock-env\server.js
+echo 2. Open http://localhost:5556/demo in your browser
+echo 3. Click "Load API Bridge" button
 echo 4. Click anywhere on the page to calibrate
-echo 5. Watch the magic happen!
+echo 5. Watch the real API flow happen!
 echo.
 
 node src\node-server\coordinator-demo.js

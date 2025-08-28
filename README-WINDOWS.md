@@ -83,43 +83,31 @@ calibrate.bat
 
 # Send chat request
 $body = @{message="Hello"} | ConvertTo-Json
-Invoke-RestMethod -Uri "http://localhost:3000/api/chat" -Method Post -Body $body -ContentType "application/json"
+Invoke-RestMethod -Uri "http://localhost:5555/api/chat" -Method Post -Body $body -ContentType "application/json"
 ```
 
 ## Production Setup on Windows
 
-### 1. Prepare the Browser
-1. Open your internal Claude UI in Chrome/Edge
-2. Open Developer Console (F12)
-3. Go to Console tab
-4. Choose the appropriate bridge script:
-   - For testing: Copy contents of `src/browser-bridge/bridge-mock.js`
-   - For production: Copy contents of `src/browser-bridge/bridge.js`
-5. Paste into console and press Enter
-6. You should see:
-   - Testing: "CCC BRIDGE ACTIVE" badge with visible buttons
-   - Production: Green overlay with "CCC BRIDGE READY"
-
-### 2. Start the Coordinator
+### 1. Start the System
 ```cmd
 start.bat
 ```
+This will:
+- Compile the Java agent automatically
+- Start mock server on port 5556
+- Start coordinator on port 5555
+- Auto-calibrate button positions (READ: 360,216 WRITE: 630,207)
 
-### 3. Calibrate Button Positions
-1. Run the calibration tool:
-```cmd
-calibrate.bat
-```
-2. When prompted, click on the READ button
-3. When prompted again, click on the WRITE button
-4. The tool will output a calibration command
-5. Copy and run the provided command
+### 2. Open the Mock UI
+1. Open http://localhost:5556 in Chrome/Edge
+2. Wait for "CCC BRIDGE ACTIVE" indicator to appear (auto-loads after 1 second)
+3. The bridge script is now loaded automatically - no need to paste anything!
 
-### 4. Test
+### 3. Test
 Send a test message:
 ```powershell
 $body = @{message="Hello, Claude!"} | ConvertTo-Json
-Invoke-RestMethod -Uri "http://localhost:3000/api/chat" -Method Post -Body $body -ContentType "application/json"
+Invoke-RestMethod -Uri "http://localhost:5555/api/chat" -Method Post -Body $body -ContentType "application/json"
 ```
 
 ## Troubleshooting

@@ -349,6 +349,168 @@
     log('Fixed UI ready. Waiting for Java Robot clicks...', 'success');
     log('The READ button will check for CCC_REQUEST messages', 'info');
     log('The WRITE button will send BROWSER_RESPONSE messages', 'info');
+    
+    // Auto-load bridge enhancement
+    setTimeout(() => {
+      log('Loading bridge enhancement...', 'info');
+      loadBridgeEnhancement();
+    }, 1000);
+    
+    // Bridge Enhancement Script (from bridge-mock.js)
+    function loadBridgeEnhancement() {
+      'use strict';
+      
+      console.log('[CCC Bridge Mock] Initializing for button-based UI...');
+      
+      // State
+      let bridgeActive = false;
+      let bridgeLastRequest = null;
+      let bridgeClickCount = 0;
+      
+      // Find the buttons
+      const readBtn = document.getElementById('clipboard-read-btn');
+      const writeBtn = document.getElementById('clipboard-write-btn');
+      
+      if (!readBtn || !writeBtn) {
+        console.error('[CCC Bridge Mock] Buttons not found! Make sure you\'re on the mock UI page.');
+        log('Bridge enhancement failed - buttons not found', 'error');
+        return;
+      }
+      
+      console.log('[CCC Bridge Mock] Found buttons, enhancing...');
+      
+      // Enhanced click handler for READ button
+      const originalReadClick = readBtn.onclick;
+      readBtn.onclick = async function(e) {
+        console.log('[CCC Bridge Mock] READ button clicked by', e.isTrusted ? 'user/robot' : 'script');
+        
+        // Call original handler if exists
+        if (originalReadClick) originalReadClick.call(this, e);
+        
+        // Our enhancement - check for CCC requests
+        if (bridgeActive) {
+          bridgeClickCount++;
+          console.log('[CCC Bridge Mock] Checking clipboard for CCC_REQUEST...');
+          
+          try {
+            const clipboardText = await navigator.clipboard.readText();
+            console.log('[CCC Bridge Mock] Clipboard length:', clipboardText.length);
+            
+            if (clipboardText.includes('CCC_REQUEST')) {
+              console.log('[CCC Bridge Mock] Found CCC_REQUEST!');
+              const requestEnd = clipboardText.indexOf('|||CCC_END|||');
+              if (requestEnd > 0) {
+                const requestJson = clipboardText.substring(0, requestEnd).trim();
+                console.log('[CCC Bridge Mock] Raw request JSON:', requestJson);
+                console.log('[CCC Bridge Mock] First 50 chars:', requestJson.substring(0, 50));
+                console.log('[CCC Bridge Mock] First char code:', requestJson.charCodeAt(0));
+                
+                try {
+                  // Remove any BOM or zero-width characters
+                  const cleanJson = requestJson.replace(/^\uFEFF/, '').replace(/^[\u200B-\u200D\uFEFF]/, '');
+                  bridgeLastRequest = JSON.parse(cleanJson);
+                  console.log('[CCC Bridge Mock] Parsed request:', bridgeLastRequest.id, bridgeLastRequest.action);
+                  
+                  // Visual feedback
+                  readBtn.style.background = '#ffc107';
+                  setTimeout(() => {
+                    readBtn.style.background = '#28a745';
+                  }, 500);
+                } catch (parseErr) {
+                  console.error('[CCC Bridge Mock] JSON parse error:', parseErr.message);
+                  console.error('[CCC Bridge Mock] Invalid JSON:', requestJson);
+                  // Log char codes for debugging
+                  console.error('[CCC Bridge Mock] First 10 char codes:', 
+                    [...requestJson.substring(0, 10)].map(c => c.charCodeAt(0)).join(', '));
+                }
+              } else {
+                console.warn('[CCC Bridge Mock] Found CCC_REQUEST but no |||CCC_END||| marker');
+              }
+            } else {
+              console.log('[CCC Bridge Mock] No CCC_REQUEST in clipboard');
+            }
+          } catch (err) {
+            console.error('[CCC Bridge Mock] Error reading clipboard:', err);
+          }
+        }
+      };
+      
+      // Enhanced click handler for WRITE button
+      const originalWriteClick = writeBtn.onclick;
+      writeBtn.onclick = async function(e) {
+        console.log('[CCC Bridge Mock] WRITE button clicked by', e.isTrusted ? 'user/robot' : 'script');
+        
+        // Call original handler if exists
+        if (originalWriteClick) originalWriteClick.call(this, e);
+        
+        // Our enhancement - write response if we have a request
+        if (bridgeActive && bridgeLastRequest) {
+          console.log('[CCC Bridge Mock] Writing response for request:', bridgeLastRequest.id);
+          
+          try {
+            const response = {
+              type: 'BROWSER_RESPONSE',
+              id: bridgeLastRequest.id,
+              timestamp: Date.now(),
+              status: 'success',
+              payload: {
+                content: 'Mock response via bridge script - buttons working!',
+                chat_id: 'mock-' + Date.now(),
+                clickCount: bridgeClickCount,
+                trusted: e.isTrusted
+              }
+            };
+            
+            const responseText = JSON.stringify(response) + '|||BROWSER_END|||';
+            await navigator.clipboard.writeText(responseText);
+            
+            console.log('[CCC Bridge Mock] Response written to clipboard');
+            
+            // Visual feedback
+            writeBtn.style.background = '#28a745';
+            setTimeout(() => {
+              writeBtn.style.background = '#17a2b8';
+            }, 500);
+            
+            // Clear the request
+            bridgeLastRequest = null;
+            
+          } catch (err) {
+            console.error('[CCC Bridge Mock] Error writing clipboard:', err);
+          }
+        }
+      };
+      
+      // Add visual indicator
+      const indicator = document.createElement('div');
+      indicator.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        padding: 10px 20px;
+        background: #28a745;
+        color: white;
+        border-radius: 5px;
+        font-family: monospace;
+        font-weight: bold;
+        z-index: 10000;
+      `;
+      indicator.textContent = 'CCC BRIDGE ACTIVE';
+      document.body.appendChild(indicator);
+      
+      // Activate bridge
+      bridgeActive = true;
+      
+      console.log('[CCC Bridge Mock] Bridge active! The existing buttons will now handle CCC requests.');
+      console.log('[CCC Bridge Mock] Calibrate the button positions and start testing.');
+      log('Bridge enhancement loaded successfully!', 'success');
+      
+      // Export for debugging
+      window.CCCBridgeMock = {
+        status: () => ({ active: bridgeActive, clickCount: bridgeClickCount, lastRequest: bridgeLastRequest }),
+        deactivate: () => { bridgeActive = false; indicator.style.background = '#dc3545'; }
+      };
+    }
   </script>
 </body>
 </html>

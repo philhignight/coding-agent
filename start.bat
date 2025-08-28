@@ -56,7 +56,7 @@ echo   WRITE: X=630, Y=207
 echo.
 echo Next steps:
 echo 1. Open http://localhost:5556 in your browser
-echo 2. Paste bridge-mock.js in console (F12)
+echo 2. Wait for "CCC BRIDGE ACTIVE" indicator to appear
 echo 3. Test with PowerShell:
 echo.
 echo $body = @{message="Hello"} ^| ConvertTo-Json

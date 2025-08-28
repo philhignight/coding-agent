@@ -66,12 +66,9 @@ echo SETUP STEPS:
 echo ================================
 echo.
 echo 1. Open http://localhost:5556 in your browser
-echo    (This uses localhost which allows clipboard access)
+echo    (Bridge loads automatically - wait for "CCC BRIDGE ACTIVE")
 echo.
-echo 2. Open browser console (F12) and paste bridge script:
-echo    Copy ALL contents from src\browser-bridge\bridge-mock.js
-echo.
-echo 3. Test the bridge:
+echo 2. Test the bridge:
 echo    PowerShell: 
 echo    $body = @{message="Hello"} ^| ConvertTo-Json
 echo    Invoke-RestMethod -Uri "http://localhost:5555/api/chat" -Method Post -Body $body -ContentType "application/json"

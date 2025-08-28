@@ -96,7 +96,7 @@ try {
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Cyan
 Write-Host "1. Open browser: " -NoNewline; Write-Host "http://localhost:5556" -ForegroundColor Yellow
-Write-Host "2. Open browser console (F12) and paste bridge-mock.js"
+Write-Host "2. Wait for " -NoNewline; Write-Host "CCC BRIDGE ACTIVE" -ForegroundColor Green -NoNewline; Write-Host " indicator"
 Write-Host "3. Test chat:"
 Write-Host '   $body = @{message="Hello"} | ConvertTo-Json' -ForegroundColor Gray
 Write-Host '   Invoke-RestMethod -Uri "http://localhost:5555/api/chat" -Method Post -Body $body -ContentType "application/json"' -ForegroundColor Gray

@@ -264,6 +264,12 @@ public class ClipboardAgent {
                 // Remove quotes from string values
                 if (value.startsWith("\"") && value.endsWith("\"")) {
                     value = value.substring(1, value.length() - 1);
+                    // Unescape JSON string
+                    value = value.replace("\\\"", "\"")
+                                 .replace("\\\\", "\\")
+                                 .replace("\\n", "\n")
+                                 .replace("\\r", "\r")
+                                 .replace("\\t", "\t");
                 }
                 
                 result.put(key, value);
@@ -283,10 +289,25 @@ public class ClipboardAgent {
     }
     
     private static void sendResponse(String type, String data) {
-        String response = String.format("{\"type\":\"%s\",\"data\":\"%s\",\"timestamp\":%d}",
-            type, data != null ? data : "", System.currentTimeMillis());
-        System.out.println(response);
+        // For clipboard_content, send raw data without escaping
+        if ("clipboard_content".equals(type) && data != null) {
+            String response = String.format("{\"type\":\"%s\",\"data\":%s,\"timestamp\":%d}",
+                type, escapeJson(data), System.currentTimeMillis());
+            System.out.println(response);
+        } else {
+            String response = String.format("{\"type\":\"%s\",\"data\":\"%s\",\"timestamp\":%d}",
+                type, data != null ? data : "", System.currentTimeMillis());
+            System.out.println(response);
+        }
         System.out.flush();
+    }
+    
+    private static String escapeJson(String str) {
+        return "\"" + str.replace("\\", "\\\\")
+                         .replace("\"", "\\\"")
+                         .replace("\n", "\\n")
+                         .replace("\r", "\\r")
+                         .replace("\t", "\\t") + "\"";
     }
     
     private static void sendError(String error) {

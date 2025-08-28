@@ -4,14 +4,12 @@ echo CCC Quick Start for Windows
 echo ================================
 echo.
 
-REM Check if agent.jar exists
-if not exist "src\java-agent\agent.jar" (
-    echo Java agent not compiled. Running compile script...
-    call compile.bat
-    if %errorlevel% neq 0 (
-        echo Compilation failed. Exiting.
-        exit /b 1
-    )
+REM Always recompile to ensure latest changes
+echo Compiling Java agent...
+call compile.bat
+if %errorlevel% neq 0 (
+    echo Compilation failed. Exiting.
+    exit /b 1
 )
 
 echo Starting CCC components locally...
@@ -32,6 +30,18 @@ REM Start coordinator locally
 echo Starting coordinator on localhost:%COORDINATOR_PORT%...
 start "CCC Coordinator" cmd /k node src\node-server\coordinator.js
 
+REM Wait for coordinator to start
+timeout /t 2 /nobreak >nul
+
+REM Auto-calibrate with hardcoded coordinates
+echo Auto-calibrating button positions...
+curl -s "http://localhost:5555/api/calibrate?readX=360&readY=296&writeX=630&writeY=287" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo Calibration successful!
+) else (
+    echo Warning: Auto-calibration failed. You may need to calibrate manually.
+)
+
 echo.
 echo ================================
 echo CCC is running locally!
@@ -40,13 +50,14 @@ echo.
 echo Mock UI:     http://localhost:5556
 echo Coordinator: http://localhost:5555
 echo.
-echo Using localhost allows clipboard access!
+echo Button positions auto-calibrated:
+echo   READ:  X=360, Y=296
+echo   WRITE: X=630, Y=287
 echo.
 echo Next steps:
 echo 1. Open http://localhost:5556 in your browser
 echo 2. Paste bridge-mock.js in console (F12)
-echo 3. Run calibrate.bat
-echo 4. Test with PowerShell:
+echo 3. Test with PowerShell:
 echo.
 echo $body = @{message="Hello"} ^| ConvertTo-Json
 echo Invoke-RestMethod -Uri "http://localhost:5555/api/chat" -Method Post -Body $body -ContentType "application/json"

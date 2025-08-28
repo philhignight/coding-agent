@@ -28,29 +28,35 @@ if (!(Test-Prerequisite "node" "Node.js" "https://nodejs.org/")) { exit 1 }
 Write-Host "✓ Node.js found: " -NoNewline -ForegroundColor Green
 node --version
 
-# Check if agent.jar exists
-if (!(Test-Path "src\java-agent\agent.jar")) {
-    Write-Host "Java agent not compiled. Running compile script..." -ForegroundColor Yellow
-    if (Test-Path "compile.bat") {
-        & .\compile.bat
-    } else {
-        Write-Host "compile.bat not found!" -ForegroundColor Red
+# Always recompile to ensure latest changes
+Write-Host "Compiling Java agent..." -ForegroundColor Yellow
+if (Test-Path "compile.bat") {
+    & .\compile.bat
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Compilation failed. Exiting." -ForegroundColor Red
         exit 1
     }
+} else {
+    Write-Host "compile.bat not found!" -ForegroundColor Red
+    exit 1
 }
 
 Write-Host ""
 Write-Host "Starting CCC components..." -ForegroundColor Cyan
 Write-Host ""
 
+# Set environment variables
+$env:MOCK_PORT = "5556"
+$env:COORDINATOR_PORT = "5555"
+
 # Start mock server
-Write-Host "Starting mock API server on port 3001..." -ForegroundColor Yellow
+Write-Host "Starting mock API server on port 5556..." -ForegroundColor Yellow
 $mockServer = Start-Process -FilePath "node" -ArgumentList "mock-env\server.js" -PassThru -WindowStyle Normal -WorkingDirectory $PWD
 
 Start-Sleep -Seconds 2
 
 # Start coordinator
-Write-Host "Starting coordinator on port 3000..." -ForegroundColor Yellow
+Write-Host "Starting coordinator on port 5555..." -ForegroundColor Yellow
 $coordinator = Start-Process -FilePath "node" -ArgumentList "src\node-server\coordinator.js" -PassThru -WindowStyle Normal -WorkingDirectory $PWD
 
 Start-Sleep -Seconds 2
@@ -60,14 +66,26 @@ Write-Host "================================" -ForegroundColor Green
 Write-Host "CCC is running!" -ForegroundColor Green
 Write-Host "================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Mock UI:     " -NoNewline; Write-Host "http://localhost:3001" -ForegroundColor Cyan
-Write-Host "Coordinator: " -NoNewline; Write-Host "http://localhost:3000" -ForegroundColor Cyan
+Write-Host "Mock UI:     " -NoNewline; Write-Host "http://localhost:5556" -ForegroundColor Cyan
+Write-Host "Coordinator: " -NoNewline; Write-Host "http://localhost:5555" -ForegroundColor Cyan
 Write-Host ""
 
+# Auto-calibrate with hardcoded coordinates
+Write-Host "Auto-calibrating button positions..." -ForegroundColor Yellow
+try {
+    $response = Invoke-RestMethod -Uri "http://localhost:5555/api/calibrate?readX=360&readY=296&writeX=630&writeY=287" -Method Get
+    Write-Host "✓ Calibration successful!" -ForegroundColor Green
+    Write-Host "  READ button:  X=360, Y=296" -ForegroundColor Gray
+    Write-Host "  WRITE button: X=630, Y=287" -ForegroundColor Gray
+} catch {
+    Write-Host "⚠ Auto-calibration failed. You may need to calibrate manually." -ForegroundColor Yellow
+}
+
 # Test connection
+Write-Host ""
 Write-Host "Testing connection..." -ForegroundColor Yellow
 try {
-    $status = Invoke-RestMethod -Uri "http://localhost:3000/api/status" -Method Get
+    $status = Invoke-RestMethod -Uri "http://localhost:5555/api/status" -Method Get
     Write-Host "✓ Coordinator is responding" -ForegroundColor Green
     Write-Host "  Java Agent: $($status.javaAgent)" -ForegroundColor Gray
     Write-Host "  Calibrated: $($status.calibrated)" -ForegroundColor Gray
@@ -77,12 +95,11 @@ try {
 
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Cyan
-Write-Host "1. Open browser: " -NoNewline; Write-Host "http://localhost:3001" -ForegroundColor Yellow
-Write-Host "2. Calibrate (replace with actual coordinates):"
-Write-Host '   Invoke-RestMethod -Uri "http://localhost:3000/api/calibrate?x=500&y=500"' -ForegroundColor Gray
+Write-Host "1. Open browser: " -NoNewline; Write-Host "http://localhost:5556" -ForegroundColor Yellow
+Write-Host "2. Open browser console (F12) and paste bridge-mock.js"
 Write-Host "3. Test chat:"
-Write-Host '   $body = @{message="Hello"} | ConvertTo-Json'
-Write-Host '   Invoke-RestMethod -Uri "http://localhost:3000/api/chat" -Method Post -Body $body -ContentType "application/json"' -ForegroundColor Gray
+Write-Host '   $body = @{message="Hello"} | ConvertTo-Json' -ForegroundColor Gray
+Write-Host '   Invoke-RestMethod -Uri "http://localhost:5555/api/chat" -Method Post -Body $body -ContentType "application/json"' -ForegroundColor Gray
 Write-Host ""
 
 # Function to stop services

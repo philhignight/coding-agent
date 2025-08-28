@@ -98,7 +98,7 @@ echo
 
 # Copy unpackage script
 echo "Copying unpackage script..."
-cp unpackage.bat dist/unpackage.bat
+cp unpackage2.bat dist/unpackage.bat
 
 echo
 echo "================================"

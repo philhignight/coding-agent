@@ -27,3 +27,7 @@ Thumbs.db
 # Test output
 /tmp/
 /logs/
+
+# Distribution
+dist/*
+!dist/.gitkeep

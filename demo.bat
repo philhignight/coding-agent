@@ -9,14 +9,12 @@ echo 2. Sending an AI request
 echo 3. Receiving the response
 echo.
 
-REM Compile Java agent if needed
-if not exist "src\java-agent\agent.jar" (
-    echo Compiling Java agent...
-    call compile.bat
-    if %errorlevel% neq 0 (
-        echo Compilation failed!
-        exit /b 1
-    )
+REM Always recompile Java agent to ensure latest code
+echo Compiling Java agent...
+call compile.bat
+if %errorlevel% neq 0 (
+    echo Compilation failed!
+    exit /b 1
 )
 
 REM Set environment variable for mock server port

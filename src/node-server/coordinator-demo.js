@@ -8,15 +8,14 @@ const fs = require('fs');
 const CONFIG = {
   javaAgentPath: path.join(__dirname, '..', 'java-agent', 'agent.jar'),
   calibrationPollInterval: 1000,
-  calibrationTimeout: 30000,
+  responseTimeout: 120000, // 2 minutes for response
   clickPosition: null // Will be set during calibration
 };
 
 // State
 const state = {
   javaAgent: null,
-  calibrated: false,
-  calibrationStartTime: null
+  calibrated: false
 };
 
 // Start Java agent
@@ -160,10 +159,9 @@ function checkClipboardContent(content) {
 // Poll clipboard for calibration
 async function pollForCalibration() {
   console.log('[Demo] Starting calibration polling...');
-  console.log('[Demo] Please paste bridge-calibrate.js in your browser console');
-  console.log('[Demo] Then click anywhere on the page to calibrate\n');
-  
-  state.calibrationStartTime = Date.now();
+  console.log('[Demo] Please load the bridge in your browser');
+  console.log('[Demo] Then click anywhere on the page to calibrate');
+  console.log('[Demo] (Waiting indefinitely for calibration...)\n');
   
   const pollInterval = setInterval(() => {
     if (state.calibrated) {
@@ -171,14 +169,7 @@ async function pollForCalibration() {
       return;
     }
     
-    // Check if timeout
-    if (Date.now() - state.calibrationStartTime > CONFIG.calibrationTimeout) {
-      console.error('[Demo] Calibration timeout!');
-      clearInterval(pollInterval);
-      process.exit(1);
-    }
-    
-    // Poll clipboard
+    // Poll clipboard - no timeout, wait forever
     sendJavaCommand({ cmd: 'GET_CLIPBOARD' });
     
   }, CONFIG.calibrationPollInterval);
@@ -274,15 +265,15 @@ function pollForResponse() {
     clearInterval(clickInterval);
   };
   
-  // Timeout after 30 seconds
+  // Timeout after CONFIG.responseTimeout
   setTimeout(() => {
     if (!responseFound) {
       clearInterval(pollInterval);
       clearInterval(clickInterval);
-      console.error('[Demo] Response timeout!');
+      console.error('[Demo] Response timeout after', CONFIG.responseTimeout / 1000, 'seconds!');
       process.exit(1);
     }
-  }, 30000);
+  }, CONFIG.responseTimeout);
 }
 
 // Main

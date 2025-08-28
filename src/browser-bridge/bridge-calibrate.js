@@ -145,13 +145,12 @@
       try {
         const calibrationMsg = JSON.stringify({
           type: 'CCC_CALIBRATION',
-          x: e.clientX,
-          y: e.clientY,
+          clicked: true,
           timestamp: Date.now()
         }) + '|||CCC_END|||';
         
         await navigator.clipboard.writeText(calibrationMsg);
-        console.log('[CCC Bridge] Calibration coordinates written to clipboard');
+        console.log('[CCC Bridge] Calibration click written to clipboard');
         updateDisplay('ready');
         
       } catch (err) {

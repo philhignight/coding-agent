@@ -106,6 +106,10 @@ public class ClipboardAgent {
                     saveMousePosition();
                     break;
                     
+                case "GET_MOUSE":
+                    getMousePosition();
+                    break;
+                    
                 case "RESTORE_MOUSE":
                     restoreMousePosition();
                     break;
@@ -192,6 +196,11 @@ public class ClipboardAgent {
     private static void saveMousePosition() {
         savedMousePosition = MouseInfo.getPointerInfo().getLocation();
         sendResponse("mouse_saved", savedMousePosition.x + "," + savedMousePosition.y);
+    }
+    
+    private static void getMousePosition() {
+        Point currentPos = MouseInfo.getPointerInfo().getLocation();
+        sendResponse("mouse_position", currentPos.x + "," + currentPos.y);
     }
     
     private static void restoreMousePosition() {

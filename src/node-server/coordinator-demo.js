@@ -84,7 +84,18 @@ function handleJavaResponse(response) {
       break;
       
     case 'mouse_position':
-      console.log('[Demo] Current mouse position:', response.data);
+      if (state.waitingForMousePos) {
+        // Parse position (format: "x,y")
+        const [x, y] = response.data.split(',').map(n => parseInt(n));
+        CONFIG.clickPosition = { x, y };
+        console.log('[Demo] Captured mouse position:', x, y);
+        state.waitingForMousePos = false;
+        
+        // Send AI request after short delay
+        setTimeout(() => sendAIRequest(), 2000);
+      } else {
+        console.log('[Demo] Current mouse position:', response.data);
+      }
       break;
       
     default:
@@ -102,10 +113,11 @@ function checkClipboardContent(content) {
       const msgEnd = content.indexOf('|||CCC_END|||');
       if (msgEnd > 0) {
         const calibrationData = JSON.parse(content.substring(0, msgEnd));
-        console.log('[Demo] Calibration received! Position:', calibrationData.x, calibrationData.y);
+        console.log('[Demo] Calibration click detected!');
         
-        // Save the click position
-        CONFIG.clickPosition = { x: calibrationData.x, y: calibrationData.y };
+        // Get current mouse position from Java
+        sendJavaCommand({ cmd: 'GET_MOUSE' });
+        state.waitingForMousePos = true;
         state.calibrated = true;
         
         // Update status
@@ -113,9 +125,6 @@ function checkClipboardContent(content) {
         
         // Clear clipboard
         sendJavaCommand({ cmd: 'SET_CLIPBOARD', data: '' });
-        
-        // Send AI request after short delay
-        setTimeout(() => sendAIRequest(), 2000);
       }
     } catch (e) {
       console.error('[Demo] Failed to parse calibration:', e);

@@ -82,6 +82,37 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   
+  // Serve demo page
+  if (pathname === '/demo' && req.method === 'GET') {
+    const demoPath = path.join(__dirname, 'demo.html');
+    
+    if (fs.existsSync(demoPath)) {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(fs.readFileSync(demoPath));
+    } else {
+      res.writeHead(404);
+      res.end('Demo page not found');
+    }
+    return;
+  }
+  
+  // Serve bridge scripts
+  if (pathname === '/bridge-calibrate.js' && req.method === 'GET') {
+    const scriptPath = path.join(__dirname, '..', 'src', 'browser-bridge', 'bridge-calibrate.js');
+    
+    if (fs.existsSync(scriptPath)) {
+      res.writeHead(200, { 
+        'Content-Type': 'application/javascript',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end(fs.readFileSync(scriptPath));
+    } else {
+      res.writeHead(404);
+      res.end('Bridge script not found');
+    }
+    return;
+  }
+  
   // API endpoints
   if (!validateAuth(req) && pathname.startsWith('/api/')) {
     res.writeHead(401, { 'Content-Type': 'application/json' });

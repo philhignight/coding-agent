@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>CCC AI Bridge Demo</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 40px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    h1 {
+      margin-top: 0;
+      color: #1a1a2e;
+    }
+    
+    .instruction {
+      background: #e8f4f8;
+      padding: 20px;
+      border-radius: 5px;
+      margin: 20px 0;
+      border-left: 4px solid #0f3460;
+    }
+    
+    .code-block {
+      background: #282c34;
+      color: #abb2bf;
+      padding: 15px;
+      border-radius: 5px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    
+    .button {
+      display: inline-block;
+      padding: 12px 24px;
+      background: #0f3460;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      margin: 10px 5px;
+      cursor: pointer;
+      border: none;
+      font-size: 16px;
+    }
+    
+    .button:hover {
+      background: #16213e;
+    }
+    
+    #status {
+      margin-top: 30px;
+      padding: 20px;
+      background: #f8f8f8;
+      border-radius: 5px;
+      font-family: monospace;
+      white-space: pre-line;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🤖 CCC AI Bridge Demo</h1>
+    
+    <p>This demo shows the full clipboard bridge flow with automatic calibration.</p>
+    
+    <div class="instruction">
+      <h3>Quick Start:</h3>
+      <ol>
+        <li>Make sure you've run <code>demo.bat</code> in your terminal</li>
+        <li>Click the button below to load the bridge</li>
+        <li>Click anywhere on the overlay to calibrate</li>
+        <li>Watch the coordinator send an AI request automatically</li>
+      </ol>
+    </div>
+    
+    <button class="button" onclick="loadBridge()">Load Bridge Script</button>
+    <button class="button" onclick="loadBridgeAuto()">Auto-Load from Server</button>
+    
+    <div class="code-block">
+      // Or manually paste this in your console (F12):<br>
+      fetch('/bridge-calibrate.js').then(r => r.text()).then(eval);
+    </div>
+    
+    <div id="status">
+      Status: Ready to load bridge...
+    </div>
+  </div>
+  
+  <script>
+    function updateStatus(msg) {
+      const status = document.getElementById('status');
+      const timestamp = new Date().toLocaleTimeString();
+      status.textContent += `[${timestamp}] ${msg}\n`;
+      status.scrollTop = status.scrollHeight;
+    }
+    
+    async function loadBridge() {
+      updateStatus('Loading bridge script...');
+      
+      try {
+        const response = await fetch('/bridge-calibrate.js');
+        const script = await response.text();
+        eval(script);
+        updateStatus('Bridge loaded! Click anywhere to calibrate.');
+      } catch (err) {
+        updateStatus('Error loading bridge: ' + err.message);
+      }
+    }
+    
+    async function loadBridgeAuto() {
+      updateStatus('Fetching bridge script from server...');
+      
+      try {
+        const script = document.createElement('script');
+        script.src = '/bridge-calibrate.js';
+        script.onload = () => updateStatus('Bridge loaded! Click anywhere to calibrate.');
+        script.onerror = () => updateStatus('Failed to load bridge script');
+        document.body.appendChild(script);
+      } catch (err) {
+        updateStatus('Error: ' + err.message);
+      }
+    }
+    
+    // Monitor clipboard access
+    document.addEventListener('click', async (e) => {
+      if (window.CCCBridge) {
+        const state = window.CCCBridge.getState();
+        updateStatus(`Bridge state: ${state.state}, Clicks: ${state.clicks}`);
+      }
+    });
+  </script>
+</body>
+</html>

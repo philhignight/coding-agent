@@ -60,7 +60,7 @@ echo.
 
 REM Create unpackage script
 echo Creating unpackage script...
-copy unpackage2.bat dist\unpackage.bat >nul
+copy unpackage.bat dist\unpackage.bat >nul
 
 echo.
 echo ================================
